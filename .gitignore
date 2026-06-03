@@ -5,3 +5,7 @@ node_modules/
 *.zip
 backups/
 chatlog/
+events.jsonl
+__pycache__/
+*.pyc
+.tmp

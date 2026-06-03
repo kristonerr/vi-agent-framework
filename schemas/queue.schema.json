@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Queue",
+  "description": "Message queue for asynchronous delivery to the agent",
+  "type": "object",
+  "properties": {
+    "text": { "type": "string", "description": "Pending message to be shown to the agent on next step" }
+  }
+}

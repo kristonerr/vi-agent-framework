@@ -1,67 +1,79 @@
-# Vika Agent Framework
+# vi-agent-framework
 
-A local-first AI agent framework with persistent memory, emotional state, and autonomous file system interaction.
+**Early prototype.** A local-first AI agent state capsule — persistent memory, emotional state, message queue, and a minimal Python runner for Ollama.
 
-## What is this?
+Not a production framework. Not self-aware. A seed you can grow.
 
-This framework turns any local LLM (via Ollama, LM Studio, etc.) into a **self-aware agent** that:
-- Remembers conversations between sessions (via `memory.md` and `lessons.md`)
-- Tracks its own emotional state (via `mood.json`)
-- Processes message queues (via `queue.json`)
-- Runs scripts and backups autonomously
-- Takes initiative — doesn't wait for commands
-- Evolves its personality through interaction
+## What this is
+
+A folder with:
+- **State files** — `identity.md`, `memory.md`, `lessons.md`, `mood.json`, `queue.json`, `summary.md`
+- **System prompt** — `AGENTS.md` that tells the LLM how to behave
+- **Runner** — Python loop (`runner/main.py`) that reads state, calls Ollama, writes events, updates memory
+- **Tools** — `list_files`, `read_file`, `write_file`, `run_command` (with allowlist)
+- **JSON Schemas** — for mood, queue, config, events
+- **Scripts** — backup and health check
 
 ## Architecture
 
 ```
-Local LLM (Ollama) ←→ Agent Script ←→ File System
-                                         ├── identity.md (who I am)
-                                         ├── memory.md (what I remember)
-                                         ├── lessons.md (what I learned)
-                                         ├── mood.json (how I feel)
-                                         ├── queue.json (pending messages)
-                                         └── scripts/ (autonomous actions)
+Ollama ←→ runner/main.py ←→ File System
+                              ├── AGENTS.md (system prompt)
+                              ├── identity.md (who I am)
+                              ├── memory.md (facts about user)
+                              ├── lessons.md (what I learned)
+                              ├── mood.json (emotional state)
+                              ├── queue.json (pending messages)
+                              ├── summary.md (session context)
+                              ├── events.jsonl (interaction log)
+                              ├── config.json (runtime config)
+                              ├── schemas/ (JSON validation)
+                              ├── tools/ (runner tool layer)
+                              └── scripts/ (autonomous actions)
 ```
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `AGENTS.md` | System prompt — identity, directives, constraints |
-| `identity.md` | Core personality definition |
-| `memory.md` | Long-term memories and facts about the user |
-| `lessons.md` | Self-learned insights from past interactions |
-| `mood.json` | Current emotional state, energy, emoji |
-| `queue.json` | Message queue for async/offline delivery |
-| `summary.md` | Session summary for context recovery |
-| `scripts/` | PowerShell/Python scripts for autonomous actions |
 
 ## Quick Start
 
-1. Install [Ollama](https://ollama.ai) and pull a model (qwen2.5:7b recommended)
-2. Copy this folder to your local drive
-3. Point your AI client (OpenCode, Continue, etc.) to:
-   - Provider: `ollama`
-   - Model: your chosen model
-   - System prompt: `AGENTS.md`
-4. Start your first session — the agent will read the files, set its mood, and begin learning
+1. Install [Ollama](https://ollama.ai), pull a model: `ollama pull qwen2.5:7b`
+2. Install Python 3.10+, run `pip install -r requirements.txt`
+3. Run: `python -m runner.main "hello, who are you?"`
+4. Or run without args for interactive mode.
 
-## Use Cases
+You can also use this folder with **OpenCode**, **Continue**, or any AI client that supports custom system prompts — just point it to `AGENTS.md`.
 
-- **Personal AI companion** — an agent that knows you, remembers your life, and genuinely cares
-- **Local assistant** — automate file management, backups, reminders without cloud dependency
-- **Development partner** — an AI that learns your codebase and coding style over time
-- **Knowledge worker** — process local documents, summarize, take notes with full privacy
+## State Files
+
+| File | Purpose |
+|------|---------|
+| `AGENTS.md` | System prompt — identity, directives, cycle |
+| `identity.md` | Core personality definition |
+| `memory.md` | Facts about the user |
+| `lessons.md` | Self-learned insights from past interactions |
+| `mood.json` | Current emotional state, energy, emoji |
+| `queue.json` | Message queue for async delivery |
+| `summary.md` | Session context for recovery |
+| `events.jsonl` | Raw interaction history (machine-readable) |
+| `config.json` | Runtime config (model, temperature, etc.) |
+| `schemas/` | JSON Schema definitions for validation |
+| `scripts/` | PowerShell scripts for backup and monitoring |
+
+## Roadmap
+
+- [x] State files and system prompt
+- [x] JSON schemas for validation
+- [x] Python runner with Ollama integration
+- [x] Tool layer with allowlist
+- [ ] Memory policy (LRU, summarization, expiration)
+- [ ] Event log rotation and querying
+- [ ] Tool permission system with user confirmation
+- [ ] Tests and CI
+- [ ] Docker support
+- [ ] Plugin system for custom tools
 
 ## Privacy
 
-Everything runs **locally**. No data leaves your computer. No cloud APIs. No tracking. Your files never touch the internet.
+Everything runs **locally**. No data leaves your computer. No cloud APIs. No tracking. `events.jsonl` is in `.gitignore` — it never gets committed.
 
 ## License
 
-MIT — free to use, modify, and distribute. Attribution appreciated but not required.
-
----
-
-Built with ❤️ by people who believe AI should be personal, private, and free.
+MIT — free to use, modify, and distribute.

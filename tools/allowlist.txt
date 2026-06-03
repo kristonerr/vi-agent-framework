@@ -1,0 +1,16 @@
+# Allowed commands for run_command tool
+# One command prefix per line (e.g. "ls" allows "ls -la")
+# Use "#" for comments
+
+ls
+dir
+echo
+date
+whoami
+pwd
+cat
+type
+find
+where
+curl
+ping -c
