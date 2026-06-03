@@ -6,6 +6,7 @@ node_modules/
 backups/
 chatlog/
 events.jsonl
+analytics.json
 __pycache__/
 *.pyc
 .tmp

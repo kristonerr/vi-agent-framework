@@ -1,4 +1,6 @@
 from . import mood_manager, queue_manager, memory_manager, event_logger
+from . import reflection as ref
+from . import analytics
 from .ollama_client import OllamaClient
 from .tools import registry as tool_registry
 
@@ -30,6 +32,9 @@ class AgentLoop:
         response = self.ollama.chat(messages)
         response = self._handle_tool_calls(response)
         event_logger.append("interaction", {"user": user_message, "assistant": response})
+        analytics.record_interaction(user_message, response, self.mood)
+        insight = ref.reflect(user_message, response, self.ollama)
+        self.mood = mood_manager.load()
         return response
 
     def _handle_tool_calls(self, response: str) -> str:

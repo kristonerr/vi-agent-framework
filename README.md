@@ -11,6 +11,8 @@ A folder with:
 - **System prompt** — `AGENTS.md` that tells the LLM how to behave
 - **Runner** — Python loop (`runner/main.py`) that reads state, calls Ollama, writes events, updates memory
 - **Tools** — `list_files`, `read_file`, `write_file`, `run_command` (with allowlist)
+- **Reflection** — after each interaction, the agent writes insights about the user into `memory.md` and `lessons.md` (growing wiser over time)
+- **Analytics** — tracks mood history, session count, user emotional patterns over time
 - **JSON Schemas** — for mood, queue, config, events
 - **Scripts** — backup and health check
 
@@ -21,14 +23,17 @@ Ollama ←→ runner/main.py ←→ File System
                               ├── AGENTS.md (system prompt)
                               ├── identity.md (who I am)
                               ├── memory.md (facts about user)
-                              ├── lessons.md (what I learned)
+                              ├── lessons.md (insights & learned patterns)
                               ├── mood.json (emotional state)
                               ├── queue.json (pending messages)
                               ├── summary.md (session context)
+                              ├── analytics.json (mood history & stats)
                               ├── events.jsonl (interaction log)
                               ├── config.json (runtime config)
                               ├── schemas/ (JSON validation)
                               ├── tools/ (runner tool layer)
+                              ├── runner/reflection.py (self-improvement)
+                              ├── runner/analytics.py (user patterns)
                               └── scripts/ (autonomous actions)
 ```
 
@@ -63,16 +68,18 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] JSON schemas for validation
 - [x] Python runner with Ollama integration
 - [x] Tool layer with allowlist
+- [x] Reflection — agent writes insights after each conversation
+- [x] Analytics — mood tracking and user pattern recognition
+- [ ] Vector memory (ChromaDB) — semantic search when memory grows large
 - [ ] Memory policy (LRU, summarization, expiration)
 - [ ] Event log rotation and querying
 - [ ] Tool permission system with user confirmation
 - [ ] Tests and CI
-- [ ] Docker support
 - [ ] Plugin system for custom tools
 
 ## Privacy
 
-Everything runs **locally**. No data leaves your computer. No cloud APIs. No tracking. `events.jsonl` is in `.gitignore` — it never gets committed.
+Everything runs **locally**. No data leaves your computer. No cloud APIs. No tracking. `events.jsonl` and `analytics.json` are in `.gitignore` — they never get committed.
 
 ## License
 

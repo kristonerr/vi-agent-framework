@@ -1,6 +1,6 @@
 import sys
 import json
-from . import mood_manager, queue_manager, memory_manager, event_logger
+from . import mood_manager, queue_manager, memory_manager, event_logger, analytics
 from .agent_loop import AgentLoop
 
 import_dir = "tools"
@@ -35,6 +35,12 @@ def main():
 
     mood = mood_manager.load()
     print(f"[mood] {mood.get('mood', 'neutral')} | energy {mood.get('energy', 50)}")
+
+    analytics.session_start()
+
+    stats = analytics.get_summary()
+    print(f"[analytics] {stats['sessions']} sessions, {stats['total_interactions']} total interactions")
+    print(f"[analytics] recent mood: {stats['recent_mood']} | trend: {stats['mood_trend']}")
 
     event_logger.append("session_start", {"config": config})
 
