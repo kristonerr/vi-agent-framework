@@ -1,0 +1,7 @@
+# Ignore sensitive/transient files
+node_modules/
+*.log
+.env
+*.zip
+backups/
+chatlog/
