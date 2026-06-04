@@ -4,6 +4,7 @@ from pathlib import Path
 from . import mood_manager, queue_manager, memory_manager, event_logger
 from . import reflection as ref
 from . import analytics
+from .memory_policy import MemoryPolicy
 from .ollama_client import OllamaClient
 from .tools import registry as tool_registry
 
@@ -37,20 +38,11 @@ class AgentLoop:
         self.ollama = OllamaClient(base_url, model)
         self.mood = mood_manager.load()
         self.agent_root = Path(__file__).parent.parent.resolve()
+        self.memory_policy = MemoryPolicy(ollama=self.ollama)
         logging.info(f"Agent initialized with model: {model}")
 
     def _build_context(self) -> str:
-        parts = []
-        memory = memory_manager.read_memory()
-        lessons = memory_manager.read_lessons()
-        summary = memory_manager.read_summary()
-        if memory:
-            parts.append(f"--- MEMORY ---\n{memory}")
-        if lessons:
-            parts.append(f"--- LESSONS ---\n{lessons}")
-        if summary:
-            parts.append(f"--- SUMMARY ---\n{summary}")
-        return "\n\n".join(parts)
+        return memory_manager.get_all_context()
 
     def step(self, user_message: str) -> str:
         queue_data = queue_manager.read()
@@ -92,6 +84,14 @@ class AgentLoop:
 
         event_logger.append("interaction", {"user": user_message, "assistant": reply})
         analytics.record_interaction(user_message, reply, self.mood)
+
+        memory_manager.append_to_session_buffer({
+            "role": "user", "content": user_message, "type": "interaction"
+        })
+        transferred = self.memory_policy.consolidate()
+        if transferred:
+            logging.info(f"Consolidated {transferred} items to long-term memory")
+
         insight = ref.reflect(user_message, reply, self.ollama)
         if insight:
             logging.info(f"Insight: {insight}")
