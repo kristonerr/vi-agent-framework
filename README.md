@@ -81,6 +81,8 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 > - ✅ Reflect and learn from every conversation
 > - ✅ Track emotional patterns over time
 > - ✅ Reach out proactively when silent
+> - ✅ Emotional memory (heart.md, intuition.md)
+> - ✅ Memory policy (STM→LTM consolidation, forgetting)
 
 ## Roadmap
 
@@ -96,8 +98,8 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] shell=False for command execution
 - [x] Proactivity engine (daemon mode)
 - [ ] Semantic memory (own vector store or ChromaDB)
-- [ ] Emotional memory (heart.md, intuition.md)
-- [ ] Memory policy (importance rating, expiration, STM→LTM consolidation)
+- [x] Emotional memory (heart.md, intuition.md)
+- [x] Memory policy (importance rating, expiration, STM→LTM consolidation)
 - [ ] Event log rotation and querying
 - [ ] Tool permission system with user confirmation
 - [ ] Tests and CI
