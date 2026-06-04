@@ -19,9 +19,18 @@ def main():
     parser = argparse.ArgumentParser(description="vi-agent proactivity daemon")
     parser.add_argument("--daemon", action="store_true", help="Run in background, check every hour")
     parser.add_argument("--interval", type=int, default=3600, help="Check interval in seconds (default: 3600)")
+    parser.add_argument("--dream", action="store_true", help="Run dream consolidation once and exit")
     args = parser.parse_args()
 
     engine = ProactivityEngine()
+
+    if args.dream:
+        result = engine._dream()
+        if result:
+            print(f"✅ Dream consolidation complete: {result}")
+        else:
+            print("⏭️  No dreams needed")
+        return
 
     if args.daemon:
         print(f"vi-agent proactivity daemon started. Checking every {args.interval}s.")

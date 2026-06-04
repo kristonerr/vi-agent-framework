@@ -12,3 +12,4 @@ __pycache__/
 .tmp
 session_buffer.json
 semantic_store.json
+dreams.jsonl
