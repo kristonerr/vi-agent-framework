@@ -130,20 +130,23 @@ class MemoryPolicy:
         if len(facts) <= max_facts:
             return 0
 
-        # Удаляем факты без [importance] в начале
-        to_remove = []
-        for fact in facts[max_facts:]:
-            if "[importance:" not in fact:
-                to_remove.append(fact)
+        lines = memory.split("\n")
+        keep = []
+        removed = 0
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("- ") and stripped not in keep:
+                if "[importance:" in stripped:
+                    keep.append(line)
+                elif removed < len(facts) - max_facts:
+                    removed += 1
+                    continue
+                else:
+                    keep.append(line)
+            else:
+                keep.append(line)
 
-        if not to_remove:
-            return 0
-
-        for fact in to_remove:
-            memory = memory.replace(fact + "\n", "")
-            memory = memory.replace(fact, "")
-
-        mm._write_raw(memory)
+        mm._write_raw("\n".join(keep))
         logging.info(f"Forgot {len(to_remove)} low-priority facts")
         return len(to_remove)
 

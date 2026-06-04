@@ -62,18 +62,7 @@ class AgentLoop:
             {"role": "user", "content": user_message},
         ]
 
-        raw = self.ollama.chat(messages, response_format="json")
-        result = self._parse_json_response(raw)
-        reply = result.get("reply", raw)
-
-        tool_calls = result.get("tool_calls", [])
-        for tc in tool_calls:
-            fn = tool_registry.get(tc.get("name", ""))
-            if fn:
-                try:
-                    fn(tc.get("arguments", {}))
-                except Exception as e:
-                    logging.warning(f"Tool {tc['name']} failed: {e}")
+        result = self._chat_with_tools(messages)
 
         for mu in result.get("memory_updates", []):
             if mu.get("type") == "fact":
@@ -87,6 +76,8 @@ class AgentLoop:
 
         if queue_data.get("text"):
             queue_manager.clear()
+
+        reply = result.get("reply", "")
 
         event_logger.append("interaction", {"user": user_message, "assistant": reply})
         analytics.record_interaction(user_message, reply, self.mood)
@@ -105,7 +96,52 @@ class AgentLoop:
         self.mood = mood_manager.load()
         return reply
 
+    def _chat_with_tools(self, messages: list) -> dict:
+        """ReAct цикл: вызывает LLM, выполняет tool_calls, повторяет пока есть вызовы."""
+        max_iter = 5
+        for _ in range(max_iter):
+            raw = self.ollama.chat(messages, response_format="json")
+            result = self._parse_json_response(raw)
+            tool_calls = result.get("tool_calls", [])
+            if not tool_calls:
+                return result
+
+            for tc in tool_calls:
+                fn = tool_registry.get(tc.get("name", ""))
+                if fn:
+                    try:
+                        tool_result = fn(tc.get("arguments", {}))
+                        messages.append({
+                            "role": "tool",
+                            "content": json.dumps(tool_result, ensure_ascii=False),
+                            "name": tc["name"],
+                        })
+                    except Exception as e:
+                        messages.append({
+                            "role": "tool",
+                            "content": json.dumps({"error": str(e)}, ensure_ascii=False),
+                            "name": tc["name"],
+                        })
+                else:
+                    messages.append({
+                        "role": "tool",
+                        "content": json.dumps({"error": f"unknown tool: {tc.get('name')}"}),
+                        "name": tc.get("name", "?"),
+                    })
+
+        # fallback — последний ответ без tool_calls
+        raw = self.ollama.chat(messages, response_format="json")
+        return self._parse_json_response(raw)
+
     def _parse_json_response(self, raw: str) -> dict:
+        raw = raw.strip()
+        if raw.startswith("```json"):
+            raw = raw[7:]
+        if raw.startswith("```"):
+            raw = raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
         try:
             return json.loads(raw)
         except json.JSONDecodeError:
