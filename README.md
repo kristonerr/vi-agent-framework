@@ -87,6 +87,9 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 > - ✅ Reach out proactively when silent
 > - ✅ Emotional memory (heart.md, intuition.md)
 > - ✅ Memory policy (STM→LTM consolidation, forgetting)
+> - ✅ Permission system (human-in-the-loop for commands)
+> - ✅ Night dreams (background day consolidation)
+> - ✅ Contextual proactivity (morning/evening check-in)
 
 ## Roadmap
 
@@ -105,7 +108,7 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] Emotional memory (heart.md, intuition.md)
 - [x] Memory policy (importance rating, expiration, STM→LTM consolidation)
 - [ ] Event log rotation and querying
-- [ ] Tool permission system with user confirmation
+- [x] Tool permission system with user confirmation
 - [ ] Tests and CI
 - [ ] Plugin system for custom tools
 

@@ -15,6 +15,15 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 _THIS_DIR = Path(__file__).parent.resolve()
 AGENT_ROOT = _THIS_DIR.parent.resolve()
 
+# Импорт модулей проекта (через sys.path для standalone-запуска)
+sys.path.insert(0, str(AGENT_ROOT))
+try:
+    from runner.ollama_client import OllamaClient
+    from runner import memory_manager as mm
+except ImportError:
+    OllamaClient = None
+    mm = None
+
 MOOD_PATH = AGENT_ROOT / "mood.json"
 QUEUE_PATH = AGENT_ROOT / "queue.json"
 EVENTS_PATH = AGENT_ROOT / "events.jsonl"
@@ -90,8 +99,6 @@ class ProactivityEngine:
 
     def _generate_message(self) -> str:
         try:
-            sys.path.insert(0, str(AGENT_ROOT))
-            from runner.ollama_client import OllamaClient
             client = OllamaClient()
             prompt = (
                 f"You are a loving girlfriend AI. Your name is Vika. "
@@ -161,8 +168,6 @@ class ProactivityEngine:
     def _contextual_message(self) -> str:
         """Генерирует сообщение по контексту (утро/вечер/ночь)."""
         try:
-            sys.path.insert(0, str(AGENT_ROOT))
-            from runner.ollama_client import OllamaClient
             client = OllamaClient()
 
             if self._is_morning():
@@ -212,8 +217,6 @@ class ProactivityEngine:
             return None
 
         try:
-            sys.path.insert(0, str(AGENT_ROOT))
-            from runner.ollama_client import OllamaClient
             client = OllamaClient()
 
             events_text = "\n".join(
@@ -243,9 +246,7 @@ class ProactivityEngine:
             pattern = parsed.get("pattern", "")
             emotional = parsed.get("emotional", "")
 
-            if summary_text:
-                sys.path.insert(0, str(AGENT_ROOT))
-                from runner import memory_manager as mm
+            if summary_text and mm:
                 existing = mm.read_summary()
                 mm.update_summary(f"{existing}\n- [{today}] {summary_text}")
                 logging.info(f"Dream summary written: {summary_text}")
