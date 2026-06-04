@@ -4,6 +4,7 @@ from pathlib import Path
 ALLOWLIST_PATH = "tools/allowlist.txt"
 
 _tools: dict[str, callable] = {}
+_session_allowlist: list[str] = []
 
 
 def register(name: str, fn: callable) -> None:
@@ -27,7 +28,7 @@ def load_allowlist() -> list[str]:
 
 
 def is_command_allowed(command: str) -> bool:
-    allowlist = load_allowlist()
+    allowlist = load_allowlist() + _session_allowlist
     if not allowlist:
         return False
     cmd_base = command.strip().split()[0] if command.strip() else ""

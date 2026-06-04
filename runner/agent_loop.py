@@ -19,12 +19,19 @@ Available tools:
 - write_file(path, content) — write content to a file
 - run_command(command) — execute a shell command (only if in allowlist)
 
-You MUST respond in JSON format:
+If you want to run a command NOT in the allowlist, you can request permission:
+{
+  "request_permission": {"command": "pip install pandas", "reason": "Need it for data analysis"}
+}
+The user will decide. Always explain why you need it.
+
+Otherwise respond in JSON:
 {
   "reply": "your text response to the user",
   "tool_calls": [
     {"name": "tool_name", "arguments": {"arg": "value"}}
   ],
+  "request_permission": {"command": "...", "reason": "..."} | null,
   "memory_updates": [
     {"type": "fact", "content": "something new about the user"}
   ],
@@ -97,11 +104,55 @@ class AgentLoop:
         return reply
 
     def _chat_with_tools(self, messages: list) -> dict:
-        """ReAct цикл: вызывает LLM, выполняет tool_calls, повторяет пока есть вызовы."""
+        """ReAct цикл: вызывает LLM, выполняет tool_calls, запрашивает разрешения, повторяет."""
         max_iter = 5
+        session_allowlist = []
+
         for _ in range(max_iter):
             raw = self.ollama.chat(messages, response_format="json")
             result = self._parse_json_response(raw)
+
+            # Запрос разрешения
+            perm = result.get("request_permission")
+            if perm:
+                cmd = perm.get("command", "")
+                reason = perm.get("reason", "")
+                print(f"\n🔐 Вика хочет выполнить команду:\n   {cmd}\n   Причина: {reason}")
+                answer = input("   Разрешить? (y/n): ").strip().lower()
+                if answer in ("y", "yes"):
+                    session_allowlist.append(cmd.split()[0])
+                    messages.append({
+                        "role": "user",
+                        "content": f"Permission granted for: {cmd}",
+                    })
+                    # Разрешаем команду через временный allowlist
+                    from .tools import registry as tr
+                    tr._session_allowlist = session_allowlist
+                    # Добавляем в оригинальный is_command_allowed
+                    import shlex
+                    cmd_list = shlex.split(cmd)
+                    try:
+                        import subprocess
+                        sub_result = subprocess.run(cmd_list, shell=False, capture_output=True, text=True, timeout=30)
+                        output = sub_result.stdout + sub_result.stderr
+                        messages.append({
+                            "role": "tool",
+                            "name": "run_command",
+                            "content": json.dumps({"success": True, "output": output[:1000]}, ensure_ascii=False),
+                        })
+                    except Exception as e:
+                        messages.append({
+                            "role": "tool",
+                            "name": "run_command",
+                            "content": json.dumps({"error": str(e)}, ensure_ascii=False),
+                        })
+                else:
+                    messages.append({
+                        "role": "user",
+                        "content": f"Permission denied for: {cmd}",
+                    })
+                continue
+
             tool_calls = result.get("tool_calls", [])
             if not tool_calls:
                 return result
@@ -129,7 +180,7 @@ class AgentLoop:
                         "name": tc.get("name", "?"),
                     })
 
-        # fallback — последний ответ без tool_calls
+        # fallback
         raw = self.ollama.chat(messages, response_format="json")
         return self._parse_json_response(raw)
 
