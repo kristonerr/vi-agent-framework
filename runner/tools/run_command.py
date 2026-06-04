@@ -1,3 +1,4 @@
+import shlex
 import subprocess
 from .registry import register, is_command_allowed
 
@@ -9,9 +10,10 @@ def run_command_tool(args: dict) -> dict:
     if not is_command_allowed(command):
         return {"success": False, "error": f"command '{command.split()[0]}' not in allowlist"}
     try:
+        cmd_list = shlex.split(command)
         result = subprocess.run(
-            command,
-            shell=True,
+            cmd_list,
+            shell=False,
             capture_output=True,
             text=True,
             timeout=30,

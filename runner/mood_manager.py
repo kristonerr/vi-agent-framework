@@ -24,3 +24,10 @@ def load() -> dict:
 def save(mood_data: dict) -> None:
     mood_data["updated"] = datetime.now().strftime("%Y-%m-%dT%H:%M")
     file_manager.write(MOOD_PATH, json.dumps(mood_data, ensure_ascii=False, indent=2))
+
+
+def update(updates: dict) -> dict:
+    current = load()
+    current.update(updates)
+    save(current)
+    return current

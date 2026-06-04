@@ -27,8 +27,7 @@ def main():
 
     queue = queue_manager.read()
     if queue.get("text"):
-        print(f"[queue] {queue['text']}")
-        queue_manager.clear()
+        print(f"[queue] {queue['text']} (will be processed on next interaction)")
 
     memory = memory_manager.read_memory()
     print(f"[memory] {len(memory)} chars loaded")
