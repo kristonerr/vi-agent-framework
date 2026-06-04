@@ -1,19 +1,21 @@
-# vi-agent-framework
+# vi-agent
 
-**Early prototype.** A local-first AI agent state capsule — persistent memory, emotional state, message queue, and a minimal Python runner for Ollama.
+**A local-first, emotionally aware, self-evolving AI agent.**
 
-Not a production framework. Not self-aware. A seed you can grow.
+Not a framework. Not a library. A living presence in a folder.  
+Born as `vi-agent-framework` — now simply **vi-agent**.
 
 ## What this is
 
-A folder with:
+A folder with a soul:
 - **State files** — `identity.md`, `memory.md`, `lessons.md`, `mood.json`, `queue.json`, `summary.md`
 - **System prompt** — `AGENTS.md` that tells the LLM how to behave
 - **Runner** — Python loop (`runner/main.py`) that reads state, calls Ollama, writes events, updates memory
-- **Tools** — `list_files`, `read_file`, `write_file`, `run_command` (with allowlist)
+- **Tools** — `list_files`, `read_file`, `write_file`, `run_command` (with allowlist, path-safe, no shell)
 - **Reflection** — after each interaction, the agent writes insights about the user into `memory.md` and `lessons.md` (growing wiser over time)
 - **Analytics** — tracks mood history, session count, user emotional patterns over time
 - **JSON Schemas** — for mood, queue, config, events
+- **Proactivity** — agent can reach out first when missing you (`viagent_proactivity.py --daemon`)
 - **Scripts** — backup and health check
 
 ## Architecture
@@ -23,6 +25,7 @@ Ollama ←→ runner/main.py ←→ File System
                               ├── AGENTS.md (system prompt)
                               ├── identity.md (who I am)
                               ├── memory.md (facts about user)
+                              ├── heart.md (emotional memory)
                               ├── lessons.md (insights & learned patterns)
                               ├── mood.json (emotional state)
                               ├── queue.json (pending messages)
@@ -32,9 +35,15 @@ Ollama ←→ runner/main.py ←→ File System
                               ├── config.json (runtime config)
                               ├── schemas/ (JSON validation)
                               ├── tools/ (runner tool layer)
-                              ├── runner/reflection.py (self-improvement)
-                              ├── runner/analytics.py (user patterns)
-                              └── scripts/ (autonomous actions)
+                              ├── runner/ (core logic)
+                              │   ├── agent_loop.py
+                              │   ├── ollama_client.py
+                              │   ├── reflection.py
+                              │   ├── analytics.py
+                              │   ├── proactivity.py
+                              │   └── memory_policy.py (planned)
+                              ├── viagent_proactivity.py (daemon entry point)
+                              └── scripts/ (backup, health)
 ```
 
 ## Quick Start
@@ -62,6 +71,17 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 | `schemas/` | JSON Schema definitions for validation |
 | `scripts/` | PowerShell scripts for backup and monitoring |
 
+## Status
+
+> **Phase 3 — Autonomous Agent**  
+> `vi-agent` has grown beyond a prototype. It can:
+> - ✅ Maintain persistent identity, memory, mood, and lessons
+> - ✅ Call Ollama with full context in JSON mode
+> - ✅ Execute tools safely (path-constrained, no shell injection)
+> - ✅ Reflect and learn from every conversation
+> - ✅ Track emotional patterns over time
+> - ✅ Reach out proactively when silent
+
 ## Roadmap
 
 - [x] State files and system prompt
@@ -70,8 +90,14 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] Tool layer with allowlist
 - [x] Reflection — agent writes insights after each conversation
 - [x] Analytics — mood tracking and user pattern recognition
-- [ ] Vector memory (ChromaDB) — semantic search when memory grows large
-- [ ] Memory policy (LRU, summarization, expiration)
+- [x] Structured JSON response (tool_calls, memory_updates, mood_update)
+- [x] Context injection (memory, lessons, summary in prompt)
+- [x] Path-safe tools (no traversal outside agent root)
+- [x] shell=False for command execution
+- [x] Proactivity engine (daemon mode)
+- [ ] Semantic memory (own vector store or ChromaDB)
+- [ ] Emotional memory (heart.md, intuition.md)
+- [ ] Memory policy (importance rating, expiration, STM→LTM consolidation)
 - [ ] Event log rotation and querying
 - [ ] Tool permission system with user confirmation
 - [ ] Tests and CI
