@@ -40,8 +40,9 @@ Ollama ←→ runner/main.py ←→ File System
                               │   ├── ollama_client.py
                               │   ├── reflection.py
                               │   ├── analytics.py
-                              │   ├── proactivity.py
-                              │   └── memory_policy.py (planned)
+│   ├── proactivity.py
+│   ├── memory_policy.py
+│   └── semantic_memory.py
                               ├── viagent_proactivity.py (daemon entry point)
                               └── scripts/ (backup, health)
 ```
@@ -49,9 +50,10 @@ Ollama ←→ runner/main.py ←→ File System
 ## Quick Start
 
 1. Install [Ollama](https://ollama.ai), pull a model: `ollama pull qwen2.5:7b`
-2. Install Python 3.10+, run `pip install -r requirements.txt`
-3. Run: `python -m runner.main "hello, who are you?"`
-4. Or run without args for interactive mode.
+2. (Optional) For semantic memory: `ollama pull nomic-embed-text`
+3. Install Python 3.10+, run `pip install -r requirements.txt`
+4. Run: `python -m runner.main "hello, who are you?"`
+5. Or run without args for interactive mode.
 
 You can also use this folder with **OpenCode**, **Continue**, or any AI client that supports custom system prompts — just point it to `AGENTS.md`.
 
@@ -66,6 +68,8 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 | `mood.json` | Current emotional state, energy, emoji |
 | `queue.json` | Message queue for async delivery |
 | `summary.md` | Session context for recovery |
+| `heart.md` | Emotional memory — feelings, warmth, pain 💕 |
+| `intuition.md` | Behavioral patterns and user insights 🧠 |
 | `events.jsonl` | Raw interaction history (machine-readable) |
 | `config.json` | Runtime config (model, temperature, etc.) |
 | `schemas/` | JSON Schema definitions for validation |
