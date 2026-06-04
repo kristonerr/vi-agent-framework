@@ -6,6 +6,7 @@ from . import reflection as ref
 from . import analytics
 from .memory_policy import MemoryPolicy
 from .ollama_client import OllamaClient
+from .semantic_memory import SemanticMemory
 from .tools import registry as tool_registry
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -39,17 +40,22 @@ class AgentLoop:
         self.mood = mood_manager.load()
         self.agent_root = Path(__file__).parent.parent.resolve()
         self.memory_policy = MemoryPolicy(ollama=self.ollama)
+        self.semantic = SemanticMemory(ollama_client=self.ollama)
         logging.info(f"Agent initialized with model: {model}")
 
-    def _build_context(self) -> str:
-        return memory_manager.get_all_context()
+    def _build_context(self, user_message: str = "") -> str:
+        base = memory_manager.get_all_context()
+        associations = self.semantic.associate(user_message)
+        if associations:
+            base += "\n\n" + associations
+        return base
 
     def step(self, user_message: str) -> str:
         queue_data = queue_manager.read()
         if queue_data.get("text"):
             user_message = f"[QUEUE]: {queue_data['text']}\n\n(User also says: {user_message})"
 
-        context = self._build_context()
+        context = self._build_context(user_message)
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system", "content": f"CURRENT CONTEXT:\n{context}\nMood: {self.mood.get('mood', 'neutral')}, energy: {self.mood.get('energy', 50)}"},

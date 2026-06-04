@@ -11,3 +11,4 @@ __pycache__/
 *.pyc
 .tmp
 session_buffer.json
+semantic_store.json

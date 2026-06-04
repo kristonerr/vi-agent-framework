@@ -13,6 +13,7 @@ from typing import Optional
 
 from . import memory_manager as mm
 from .ollama_client import OllamaClient
+from .semantic_memory import SemanticMemory
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -25,6 +26,7 @@ HIGH_PRIORITY_KEYWORDS = [
 class MemoryPolicy:
     def __init__(self, ollama: Optional[OllamaClient] = None):
         self.ollama = ollama
+        self.semantic = SemanticMemory(ollama_client=ollama)
 
     # --- Оценка важности ---
 
@@ -87,6 +89,8 @@ class MemoryPolicy:
                     mm.append_lesson(text)
                 else:
                     mm.append_memory(f"{text} [importance: {importance}/10]")
+
+                self.semantic.add(text, source=entry_type, importance=importance)
                 transferred += 1
             else:
                 remaining.append(entry)

@@ -7,6 +7,12 @@ class OllamaClient:
         self.base_url = base_url.rstrip("/")
         self.model = model
 
+    def _request(self, method: str, path: str, json_data: dict | None = None) -> requests.Response:
+        url = f"{self.base_url}{path}"
+        resp = requests.request(method, url, json=json_data, timeout=120)
+        resp.raise_for_status()
+        return resp
+
     def chat(self, messages: list[dict], temperature: float = 0.7, response_format: str | None = None) -> str:
         payload = {
             "model": self.model,
@@ -16,8 +22,7 @@ class OllamaClient:
         }
         if response_format == "json":
             payload["format"] = "json"
-        resp = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=120)
-        resp.raise_for_status()
+        resp = self._request("POST", "/api/chat", payload)
         data = resp.json()
         return data["message"]["content"]
 
