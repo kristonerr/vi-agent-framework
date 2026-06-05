@@ -122,7 +122,7 @@ class MemoryPolicy:
     # --- Забывание (удаление низкоприоритетных фактов) ---
 
     def forget_low_priority(self, max_facts: int = 100) -> int:
-        """Удаляет самые старые низкоприоритетные факты, если память разрослась."""
+        """Удаляет старые низкоприоритетные факты с низким access_count."""
         memory = mm.read_memory()
         lines = memory.split("\n")
         facts = [l for l in lines if l.strip().startswith("- ")]
@@ -130,13 +130,18 @@ class MemoryPolicy:
         if len(facts) <= max_facts:
             return 0
 
-        lines = memory.split("\n")
         keep = []
         removed = 0
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith("- ") and stripped not in keep:
-                if "[importance:" in stripped:
+            if stripped.startswith("- "):
+                imp = 5
+                import re
+                m = re.search(r"\[importance:\s*(\d+)", stripped)
+                if m:
+                    imp = int(m.group(1))
+                has_access = "[access:" in stripped
+                if imp >= 3 or has_access:
                     keep.append(line)
                 elif removed < len(facts) - max_facts:
                     removed += 1
@@ -147,8 +152,8 @@ class MemoryPolicy:
                 keep.append(line)
 
         mm._write_raw("\n".join(keep))
-        logging.info(f"Forgot {len(to_remove)} low-priority facts")
-        return len(to_remove)
+        logging.info(f"Forgot {removed} low-priority facts")
+        return removed
 
     # --- Полный цикл ---
 

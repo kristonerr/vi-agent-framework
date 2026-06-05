@@ -13,3 +13,4 @@ __pycache__/
 session_buffer.json
 semantic_store.json
 dreams.jsonl
+chroma_db/

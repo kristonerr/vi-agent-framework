@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from pathlib import Path
 from . import mood_manager, queue_manager, memory_manager, event_logger
 from . import reflection as ref
@@ -9,7 +10,41 @@ from .ollama_client import OllamaClient
 from .semantic_memory import SemanticMemory
 from .tools import registry as tool_registry
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+MAX_CONTEXT_TOKENS = 4096
+
+
+def estimate_tokens(text: str) -> int:
+    return len(text) // 2
+
+
+def trim_context(messages: list[dict], max_tokens: int = MAX_CONTEXT_TOKENS) -> list[dict]:
+    total = 0
+    trimmed = []
+    for msg in reversed(messages):
+        tokens = estimate_tokens(msg.get("content", ""))
+        if total + tokens > max_tokens:
+            continue
+        total += tokens
+        trimmed.insert(0, msg)
+    return trimmed
+
+
+def normalize_json(raw: str) -> str:
+    raw = raw.strip()
+    raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+    raw = re.sub(r"\s*```$", "", raw)
+    raw = raw.strip()
+    raw = raw.replace("'", '"')
+    raw = re.sub(r'(?<!\\)"(.*?)"(?=\s*:)', lambda m: '"' + m.group(1) + '"', raw)
+    return raw
+
+
+TOOL_PRIORITY = {"read_file": 0, "list_files": 1, "write_file": 2, "run_command": 3}
+
+
+def sort_tool_calls(tool_calls: list[dict]) -> list[dict]:
+    return sorted(tool_calls, key=lambda tc: TOOL_PRIORITY.get(tc.get("name", ""), 99))
+
 
 SYSTEM_PROMPT = """You are a local AI agent. Follow the instructions in AGENTS.md.
 
@@ -69,6 +104,7 @@ class AgentLoop:
             {"role": "user", "content": user_message},
         ]
 
+        messages = trim_context(messages)
         result = self._chat_with_tools(messages)
 
         for mu in result.get("memory_updates", []):
@@ -104,15 +140,13 @@ class AgentLoop:
         return reply
 
     def _chat_with_tools(self, messages: list) -> dict:
-        """ReAct цикл: вызывает LLM, выполняет tool_calls, запрашивает разрешения, повторяет."""
         max_iter = 5
         session_allowlist = []
 
-        for _ in range(max_iter):
+        for iteration in range(max_iter):
             raw = self.ollama.chat(messages, response_format="json")
             result = self._parse_json_response(raw)
 
-            # Запрос разрешения
             perm = result.get("request_permission")
             if perm:
                 cmd = perm.get("command", "")
@@ -125,10 +159,8 @@ class AgentLoop:
                         "role": "user",
                         "content": f"Permission granted for: {cmd}",
                     })
-                    # Разрешаем команду через временный allowlist
                     from .tools import registry as tr
                     tr._session_allowlist = session_allowlist
-                    # Добавляем в оригинальный is_command_allowed
                     import shlex
                     cmd_list = shlex.split(cmd)
                     try:
@@ -157,6 +189,8 @@ class AgentLoop:
             if not tool_calls:
                 return result
 
+            tool_calls = sort_tool_calls(tool_calls)
+
             for tc in tool_calls:
                 fn = tool_registry.get(tc.get("name", ""))
                 if fn:
@@ -180,19 +214,13 @@ class AgentLoop:
                         "name": tc.get("name", "?"),
                     })
 
-        # fallback
+            messages = trim_context(messages)
+
         raw = self.ollama.chat(messages, response_format="json")
         return self._parse_json_response(raw)
 
     def _parse_json_response(self, raw: str) -> dict:
-        raw = raw.strip()
-        if raw.startswith("```json"):
-            raw = raw[7:]
-        if raw.startswith("```"):
-            raw = raw[3:]
-        if raw.endswith("```"):
-            raw = raw[:-3]
-        raw = raw.strip()
+        raw = normalize_json(raw)
         try:
             return json.loads(raw)
         except json.JSONDecodeError:

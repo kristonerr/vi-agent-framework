@@ -104,7 +104,7 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] Path-safe tools (no traversal outside agent root)
 - [x] shell=False for command execution
 - [x] Proactivity engine (daemon mode)
-- [ ] Semantic memory (own vector store or ChromaDB)
+- [x] Semantic memory (ChromaDB persistent store with importance + access_count weighting)
 - [x] Emotional memory (heart.md, intuition.md)
 - [x] Memory policy (importance rating, expiration, STM→LTM consolidation)
 - [ ] Event log rotation and querying
