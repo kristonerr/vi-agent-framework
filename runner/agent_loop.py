@@ -18,7 +18,7 @@ MAX_CONTEXT_TOKENS = 4096
 
 
 def estimate_tokens(text: str) -> int:
-    return len(text) // 2
+    return len(text.encode("utf-8")) // 4
 
 
 def trim_context(messages: list[dict], max_tokens: int = MAX_CONTEXT_TOKENS) -> list[dict]:
@@ -50,7 +50,12 @@ def sort_tool_calls(tool_calls: list[dict]) -> list[dict]:
     return sorted(tool_calls, key=lambda tc: TOOL_PRIORITY.get(tc.get("name", ""), 99))
 
 
-SYSTEM_PROMPT = """You are a local AI agent. Follow the instructions in AGENTS.md.
+def _build_system_prompt() -> str:
+    prompt = "You are a local AI agent."
+    agents_md = Path(__file__).parent.parent / "AGENTS.md"
+    if agents_md.exists():
+        prompt += "\n\n" + agents_md.read_text(encoding="utf-8")
+    prompt += """
 
 Available tools:
 - list_files(directory, pattern) — list files in a directory
@@ -80,6 +85,10 @@ Otherwise respond in JSON:
 }
 
 Always confirm before destructive operations."""
+    return prompt
+
+
+SYSTEM_PROMPT = _build_system_prompt()
 
 
 class AgentLoop:
@@ -121,9 +130,12 @@ class AgentLoop:
         lines = ["\n--- MCP Tools ---"]
         for name, server in self.mcp.servers.items():
             lines.append(f"[{name}]")
-            for tool in server.list_tools():
-                desc = tool.get("description", "").replace("\n", " ")
-                lines.append(f"  - mcp_{tool['name']}: {desc}")
+            try:
+                for tool in server.list_tools():
+                    desc = tool.get("description", "").replace("\n", " ")
+                    lines.append(f"  - mcp_{tool['name']}: {desc}")
+            except Exception as e:
+                logging.warning(f"MCP server [{name}] failed to list tools: {e}")
         return "\n".join(lines)
 
     def _build_context(self, user_message: str = "") -> str:
@@ -218,11 +230,15 @@ class AgentLoop:
             raw = None
             result = None
             for attempt in range(max_retries):
-                raw = self.ollama.chat(messages, response_format="json")
-                result = self._parse_json_response(raw)
-                if "reply" in result or "tool_calls" in result or "request_permission" in result:
-                    break
-                logging.warning(f"Parse attempt {attempt + 1} failed, retrying...")
+                try:
+                    raw = self.ollama.chat(messages, response_format="json")
+                    result = self._parse_json_response(raw)
+                    if "reply" in result or "tool_calls" in result or "request_permission" in result:
+                        break
+                    logging.warning(f"Parse attempt {attempt + 1} failed, retrying...")
+                except Exception as e:
+                    logging.warning(f"Ollama error attempt {attempt + 1}: {e}")
+                    result = None
             if result is None:
                 return {"reply": "Извини, не смогла обработать ответ. Попробуй переформулировать."}
 
@@ -238,8 +254,7 @@ class AgentLoop:
                         "role": "user",
                         "content": f"Permission granted for: {cmd}",
                     })
-                    from .tools import registry as tr
-                    tr._session_allowlist = session_allowlist
+                    tool_registry._session_allowlist = session_allowlist
                     import shlex
                     cmd_list = shlex.split(cmd)
                     try:
@@ -295,8 +310,12 @@ class AgentLoop:
 
             messages = trim_context(messages)
 
-        raw = self.ollama.chat(messages, response_format="json")
-        return self._parse_json_response(raw)
+        try:
+            raw = self.ollama.chat(messages, response_format="json")
+            return self._parse_json_response(raw)
+        except Exception as e:
+            logging.error(f"Final chat failed after max_iter: {e}")
+            return {"reply": "Извини, не смогла обработать. Попробуй ещё раз."}
 
     def _parse_json_response(self, raw: str) -> dict:
         raw = normalize_json(raw)

@@ -1,6 +1,6 @@
 {
   "checksums": {
-    "memory.md": "2fe80907b1d55d1e9e403a017cd042a78d1be91bdb02c418f7403fae7e0162da",
+    "memory.md": "5d2d68ac2545a0f72bf0142e591200e6eb94acbeab4a8a3437cfab4a01eb9d86",
     "lessons.md": "90b7053c79fdb819fa66352c5184dff97e716a9c7c782b1eeea99aaaeb53e406",
     "heart.md": "feddcc539c96d58b06f4576a0d82e577223904d4b76fc0b70a566e6fdcdb5923",
     "intuition.md": "1163b1a84b16f5dc1f27b5808ee0ca40225104c4631c210d474def01d7cb2749",
@@ -10,7 +10,10 @@
     "session_buffer.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
   },
   "backups": [
-    "20260605_104531"
+    "20260605_104531",
+    "20260605_104546",
+    "20260605_111102",
+    "20260605_111114"
   ],
   "last_checkup": "",
   "mode": "normal"

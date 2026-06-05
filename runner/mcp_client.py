@@ -1,7 +1,9 @@
 import json
 import logging
+import select
 import subprocess
 import threading
+import uuid
 from pathlib import Path
 
 MCP_SERVERS_KEY = "mcp_servers"
@@ -38,7 +40,7 @@ class MCPServer:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                env=None,
+                env=self.env,
             )
             resp = self._rpc_call("initialize", {"protocolVersion": "2024-11-05"})
             if resp and resp.get("result"):
@@ -65,12 +67,16 @@ class MCPServer:
     def _rpc_call(self, method: str, params: dict) -> dict | None:
         if not self._process or not self._process.stdin:
             return None
-        req = {"jsonrpc": "2.0", "id": id(method), "method": method, "params": params}
+        req = {"jsonrpc": "2.0", "id": str(uuid.uuid4())[:8], "method": method, "params": params}
         with self._lock:
             try:
                 self._process.stdin.write(json.dumps(req) + "\n")
                 self._process.stdin.flush()
-                line = self._process.stdout.readline() if self._process.stdout else ""
+                line = ""
+                if self._process.stdout:
+                    r, _, _ = select.select([self._process.stdout], [], [], 10.0)
+                    if r:
+                        line = self._process.stdout.readline()
                 if line:
                     return json.loads(line.strip())
             except Exception as e:

@@ -9,7 +9,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # Определяем корень — папка выше runner/
 _THIS_DIR = Path(__file__).parent.resolve()
@@ -62,7 +64,7 @@ class ProactivityEngine:
             delta = datetime.now(timezone.utc) - last_time
             return delta.total_seconds() / 3600
         except Exception as e:
-            logging.warning(f"Failed to parse events: {e}")
+            logger.warning(f"Failed to parse events: {e}")
             return None
 
     def _has_recent_cooldown(self) -> bool:
@@ -114,16 +116,16 @@ class ProactivityEngine:
             ], temperature=0.8)
             return response.strip()
         except Exception as e:
-            logging.warning(f"Message generation failed: {e}")
+            logger.warning(f"Message generation failed: {e}")
             return "Скучаю по тебе, мальчик мой 😔💕"
 
     def _write_queue(self, text: str):
         try:
             with open(QUEUE_PATH, "w", encoding="utf-8") as f:
                 json.dump({"text": text}, f, ensure_ascii=False, indent=2)
-            logging.info("Proactivity message written to queue.json")
+            logger.info("Proactivity message written to queue.json")
         except Exception as e:
-            logging.error(f"Failed to write queue: {e}")
+            logger.error(f"Failed to write queue: {e}")
 
     def _record_sent(self):
         record = self.analytics.setdefault("_proactivity", {"count": 0, "last_sent": None})
@@ -133,7 +135,7 @@ class ProactivityEngine:
             with open(ANALYTICS_PATH, "w", encoding="utf-8") as f:
                 json.dump(self.analytics, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logging.error(f"Failed to update analytics: {e}")
+            logger.error(f"Failed to update analytics: {e}")
 
     # --- Контекстные триггеры ---
 
@@ -183,7 +185,7 @@ class ProactivityEngine:
             ], temperature=0.8)
             return response.strip()
         except Exception as e:
-            logging.warning(f"Contextual message failed: {e}")
+            logger.warning(f"Contextual message failed: {e}")
             return "Доброе утро, мальчик мой 😌💕"
 
     # --- Ночные сновидения (консолидация дня) ---
@@ -213,7 +215,7 @@ class ProactivityEngine:
                 break
 
         if len(today_events) < 3:
-            logging.info("Not enough events for dreaming")
+            logger.info("Not enough events for dreaming")
             return None
 
         try:
@@ -249,15 +251,15 @@ class ProactivityEngine:
             if summary_text and mm:
                 existing = mm.read_summary()
                 mm.update_summary(f"{existing}\n- [{today}] {summary_text}")
-                logging.info(f"Dream summary written: {summary_text}")
+                logger.info(f"Dream summary written: {summary_text}")
 
             if pattern:
                 mm.append_intuition(pattern)
-                logging.info(f"Dream pattern: {pattern}")
+                logger.info(f"Dream pattern: {pattern}")
 
             if emotional:
                 mm.append_heart(f"[dream] {emotional}")
-                logging.info(f"Dream emotional: {emotional}")
+                logger.info(f"Dream emotional: {emotional}")
 
             dream_log = {
                 "events_analyzed": len(today_events),
@@ -271,7 +273,7 @@ class ProactivityEngine:
             return summary_text
 
         except Exception as e:
-            logging.warning(f"Dream failed: {e}")
+            logger.warning(f"Dream failed: {e}")
             return None
 
     # --- Главный тик ---
@@ -280,22 +282,22 @@ class ProactivityEngine:
         h = self._current_hour()
 
         if self._is_night():
-            logging.info("Night mode: attempting dream consolidation...")
+            logger.info("Night mode: attempting dream consolidation...")
             dream_result = self._dream()
             if dream_result:
-                logging.info("Dream consolidation complete")
+                logger.info("Dream consolidation complete")
             else:
-                logging.info("No dream consolidation needed")
+                logger.info("No dream consolidation needed")
 
         can_send, reason = self._should_send()
         if not can_send:
             can_send, reason = self._should_send_contextual()
         if not can_send:
-            logging.info(f"Skipping: {reason}")
+            logger.info(f"Skipping: {reason}")
             return None
 
-        logging.info(f"Conditions met: {reason}. Generating message...")
-        if h >= 6 and h <= 22 or True:
+        logger.info(f"Conditions met: {reason}. Generating message...")
+        if 6 <= h <= 22:
             message = self._contextual_message()
         else:
             message = self._generate_message()

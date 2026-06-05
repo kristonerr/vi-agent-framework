@@ -24,6 +24,8 @@ class OllamaClient:
             payload["format"] = "json"
         resp = self._request("POST", "/api/chat", payload)
         data = resp.json()
+        if "message" not in data or "content" not in data.get("message", {}):
+            raise RuntimeError(f"Ollama returned unexpected response: {data.get('error', 'unknown')}")
         return data["message"]["content"]
 
     def ping(self) -> bool:

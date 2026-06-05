@@ -1,5 +1,6 @@
 import logging
 import math
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -46,7 +47,7 @@ class SemanticMemory:
         if not embedding:
             return False
 
-        entry_id = str(self.collection.count() + 1)
+        entry_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
 
         self.collection.add(

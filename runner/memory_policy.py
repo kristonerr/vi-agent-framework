@@ -15,7 +15,7 @@ from . import memory_manager as mm
 from .ollama_client import OllamaClient
 from .semantic_memory import SemanticMemory
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 HIGH_PRIORITY_KEYWORDS = [
     "люблю", "важно", "навсегда", "никогда", "запомни",
@@ -58,7 +58,7 @@ class MemoryPolicy:
                 llm_score = int(resp.strip())
                 base = max(base, min(llm_score, 10))
             except (ValueError, Exception) as e:
-                logging.warning(f"LLM importance rating failed: {e}")
+                logger.warning(f"LLM importance rating failed: {e}")
         return min(base, 10)
 
     # --- Консолидация STM → LTM ---
@@ -99,7 +99,7 @@ class MemoryPolicy:
             mm.clear_session_buffer()
             for entry in remaining:
                 mm.append_to_session_buffer(entry)
-            logging.info(f"Consolidated {transferred} items to LTM, {len(remaining)} kept in buffer")
+            logger.info(f"Consolidated {transferred} items to LTM, {len(remaining)} kept in buffer")
         return transferred
 
     # --- Классификация типа воспоминания ---
@@ -151,8 +151,8 @@ class MemoryPolicy:
             else:
                 keep.append(line)
 
-        mm._write_raw("\n".join(keep))
-        logging.info(f"Forgot {removed} low-priority facts")
+        mm._write_raw(mm.MEMORY_PATH, "\n".join(keep))
+        logger.info(f"Forgot {removed} low-priority facts")
         return removed
 
     # --- Полный цикл ---
@@ -162,4 +162,4 @@ class MemoryPolicy:
         transferred = self.consolidate()
         forgotten = self.forget_low_priority()
         if transferred or forgotten:
-            logging.info(f"Memory tick: {transferred} consolidated, {forgotten} forgotten")
+            logger.info(f"Memory tick: {transferred} consolidated, {forgotten} forgotten")

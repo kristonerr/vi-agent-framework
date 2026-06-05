@@ -9,7 +9,6 @@ DEFAULT_MOOD = {
     "emoji": "",
     "energy": 50,
     "note": "",
-    "updated": datetime.now().strftime("%Y-%m-%dT%H:%M"),
 }
 
 
@@ -18,7 +17,9 @@ def load() -> dict:
         raw = file_manager.read(MOOD_PATH)
         return json.loads(raw)
     except (FileNotFoundError, json.JSONDecodeError):
-        return dict(DEFAULT_MOOD)
+        mood = dict(DEFAULT_MOOD)
+        mood["updated"] = datetime.now().strftime("%Y-%m-%dT%H:%M")
+        return mood
 
 
 def save(mood_data: dict) -> None:

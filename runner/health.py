@@ -141,8 +141,13 @@ def checkup() -> dict:
 def disk_ok(min_free_mb: int = 200) -> bool:
     try:
         stat = shutil.disk_usage(ROOT)
-        return stat.free // (1024 * 1024) >= min_free_mb
-    except Exception:
+        free_mb = stat.free // (1024 * 1024)
+        if free_mb < min_free_mb:
+            logging.warning(f"Low disk space: {free_mb} MB free (min {min_free_mb} MB)")
+            return False
+        return True
+    except Exception as e:
+        logging.warning(f"Could not check disk space: {e}")
         return True
 
 
