@@ -11,7 +11,7 @@ A folder with a soul:
 - **State files** — `identity.md`, `memory.md`, `lessons.md`, `mood.json`, `queue.json`, `summary.md`
 - **System prompt** — `AGENTS.md` that tells the LLM how to behave
 - **Runner** — Python loop (`runner/main.py`) that reads state, calls Ollama, writes events, updates memory
-- **Tools** — `list_files`, `read_file`, `write_file`, `run_command` (with allowlist, path-safe, no shell)
+- **Tools** — `list_files`, `read_file`, `write_file`, `run_command` (with allowlist, path-safe, no shell), `web_search` (DuckDuckGo, free)
 - **Reflection** — after each interaction, the agent writes insights about the user into `memory.md` and `lessons.md` (growing wiser over time)
 - **Analytics** — tracks mood history, session count, user emotional patterns over time
 - **JSON Schemas** — for mood, queue, config, events
@@ -35,14 +35,15 @@ Ollama ←→ runner/main.py ←→ File System
                               ├── config.json (runtime config)
                               ├── schemas/ (JSON validation)
                               ├── tools/ (runner tool layer)
-                              ├── runner/ (core logic)
-                              │   ├── agent_loop.py
-                              │   ├── ollama_client.py
-                              │   ├── reflection.py
-                              │   ├── analytics.py
+├── runner/ (core logic)
+│   ├── agent_loop.py
+│   ├── ollama_client.py
+│   ├── reflection.py
+│   ├── analytics.py
 │   ├── proactivity.py
 │   ├── memory_policy.py
-│   └── semantic_memory.py
+│   ├── semantic_memory.py
+│   └── mcp_client.py
                               ├── viagent_proactivity.py (daemon entry point)
                               └── scripts/ (backup, health)
 ```
@@ -107,10 +108,14 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] Semantic memory (ChromaDB persistent store with importance + access_count weighting)
 - [x] Emotional memory (heart.md, intuition.md)
 - [x] Memory policy (importance rating, expiration, STM→LTM consolidation)
-- [ ] Event log rotation and querying
+- [x] Event log rotation (>5MB auto-rotation)
 - [x] Tool permission system with user confirmation
-- [ ] Tests and CI
-- [ ] Plugin system for custom tools
+- [x] Tests (9 tests, all passing)
+- [x] CI (GitHub Actions)
+- [x] Web search (DuckDuckGo, no API key needed)
+- [ ] MCP plugin system (client ready, needs server config)
+- [ ] Conversation history persistence
+- [ ] Telegram/Matrix integration
 
 ## Privacy
 

@@ -5,7 +5,7 @@ from .agent_loop import AgentLoop
 
 import_dir = "tools"
 if import_dir not in sys.modules:
-    from .tools import list_files, read_file, write_file, run_command
+    from .tools import list_files, read_file, write_file, run_command, web_search
 
 
 def main():

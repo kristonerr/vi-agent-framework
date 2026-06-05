@@ -9,6 +9,9 @@ from .memory_policy import MemoryPolicy
 from .ollama_client import OllamaClient
 from .semantic_memory import SemanticMemory
 from .tools import registry as tool_registry
+from .mcp_client import MCPClient, register_mcp_servers
+
+MCP_TOOL_PREFIX = "mcp_"
 
 MAX_CONTEXT_TOKENS = 4096
 
@@ -53,6 +56,8 @@ Available tools:
 - read_file(path) — read a file
 - write_file(path, content) — write content to a file
 - run_command(command) — execute a shell command (only if in allowlist)
+- web_search(query, max_results) — search the web via DuckDuckGo (no API key needed)
+- mcp_<tool_name>(args) — MCP-connected tools from external servers (use tools/list to see available ones)
 
 If you want to run a command NOT in the allowlist, you can request permission:
 {
@@ -83,13 +88,32 @@ class AgentLoop:
         self.agent_root = Path(__file__).parent.parent.resolve()
         self.memory_policy = MemoryPolicy(ollama=self.ollama)
         self.semantic = SemanticMemory(ollama_client=self.ollama)
-        logging.info(f"Agent initialized with model: {model}")
+        self.mcp = register_mcp_servers()
+        self._mcp_tool_names: list[str] = []
+        for name, server in self.mcp.servers.items():
+            for tool in server.list_tools():
+                self._mcp_tool_names.append(f"{MCP_TOOL_PREFIX}{tool['name']}")
+        logging.info(f"Agent initialized with model: {model}" + (f", MCP servers: {list(self.mcp.servers.keys())}" if self.mcp.servers else ""))
+
+    def _mcp_context(self) -> str:
+        if not self.mcp.servers:
+            return ""
+        lines = ["\n--- MCP Tools ---"]
+        for name, server in self.mcp.servers.items():
+            lines.append(f"[{name}]")
+            for tool in server.list_tools():
+                desc = tool.get("description", "").replace("\n", " ")
+                lines.append(f"  - mcp_{tool['name']}: {desc}")
+        return "\n".join(lines)
 
     def _build_context(self, user_message: str = "") -> str:
         base = memory_manager.get_all_context()
         associations = self.semantic.associate(user_message)
         if associations:
             base += "\n\n" + associations
+        mcp_part = self._mcp_context()
+        if mcp_part:
+            base += "\n\n" + mcp_part
         return base
 
     def step(self, user_message: str) -> str:
@@ -138,6 +162,9 @@ class AgentLoop:
 
         self.mood = mood_manager.load()
         return reply
+
+    def close(self):
+        self.mcp.stop_all()
 
     def _chat_with_tools(self, messages: list) -> dict:
         max_iter = 5

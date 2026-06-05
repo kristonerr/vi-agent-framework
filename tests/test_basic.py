@@ -104,6 +104,8 @@ def test_import_standalone():
         "runner.tools.write_file",
         "runner.tools.list_files",
         "runner.tools.run_command",
+        "runner.tools.web_search",
+        "runner.mcp_client",
     ]
     for mod_name in modules:
         __import__(mod_name)
