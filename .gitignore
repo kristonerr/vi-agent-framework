@@ -14,3 +14,4 @@ session_buffer.json
 semantic_store.json
 dreams.jsonl
 chroma_db/
+.pytest_cache/
