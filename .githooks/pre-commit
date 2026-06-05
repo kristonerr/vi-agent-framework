@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run tests before allowing commit
+echo "=== Pre-commit: running tests ==="
+cd "$(dirname "$0")/.."
+python -m pytest tests/ -q
+if [ $? -ne 0 ]; then
+    echo "❌ Tests failed. Commit blocked."
+    exit 1
+fi
+echo "✅ Tests passed. Committing..."

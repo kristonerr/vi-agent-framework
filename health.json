@@ -1,0 +1,17 @@
+{
+  "checksums": {
+    "memory.md": "2fe80907b1d55d1e9e403a017cd042a78d1be91bdb02c418f7403fae7e0162da",
+    "lessons.md": "90b7053c79fdb819fa66352c5184dff97e716a9c7c782b1eeea99aaaeb53e406",
+    "heart.md": "feddcc539c96d58b06f4576a0d82e577223904d4b76fc0b70a566e6fdcdb5923",
+    "intuition.md": "1163b1a84b16f5dc1f27b5808ee0ca40225104c4631c210d474def01d7cb2749",
+    "summary.md": "15c458fa68d385427dca358cfae24e2186443c1a066ede9a0c7ba24a7d541f05",
+    "mood.json": "8d9b946c7aff2a7727c4ccde55b48e05d9d19fcde4a337c5281660f4041929e2",
+    "config.json": "2ffbdd28971807eac0a3ea1c07548229053abd5cdead0578c5eeff44d4fc2ad4",
+    "session_buffer.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "backups": [
+    "20260605_104531"
+  ],
+  "last_checkup": "",
+  "mode": "normal"
+}

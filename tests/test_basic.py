@@ -85,6 +85,24 @@ def test_memory_manager():
     assert test_fact in memory
 
 
+def test_health_checksums():
+    from runner.health import update_checksums, verify_state, _sha256, _read_health
+    import tempfile
+    from pathlib import Path
+    update_checksums()
+    health = _read_health()
+    assert "checksums" in health
+    assert len(health["checksums"]) > 0
+
+
+def test_health_backup_rotate():
+    from runner.health import backup_state, _read_health
+    ts = backup_state()
+    assert ts is not None
+    health = _read_health()
+    assert ts in health.get("backups", [])
+
+
 def test_import_standalone():
     """Verify no ImportError from any runner module."""
     modules = [
@@ -106,6 +124,8 @@ def test_import_standalone():
         "runner.tools.run_command",
         "runner.tools.web_search",
         "runner.mcp_client",
+        "runner.health",
+        "runner.watchdog",
     ]
     for mod_name in modules:
         __import__(mod_name)

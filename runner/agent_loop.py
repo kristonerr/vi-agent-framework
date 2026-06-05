@@ -10,6 +10,7 @@ from .ollama_client import OllamaClient
 from .semantic_memory import SemanticMemory
 from .tools import registry as tool_registry
 from .mcp_client import MCPClient, register_mcp_servers
+from . import health as health_mod
 
 MCP_TOOL_PREFIX = "mcp_"
 
@@ -90,10 +91,29 @@ class AgentLoop:
         self.semantic = SemanticMemory(ollama_client=self.ollama)
         self.mcp = register_mcp_servers()
         self._mcp_tool_names: list[str] = []
+        self._mode = health_mod.current_mode()
         for name, server in self.mcp.servers.items():
             for tool in server.list_tools():
                 self._mcp_tool_names.append(f"{MCP_TOOL_PREFIX}{tool['name']}")
-        logging.info(f"Agent initialized with model: {model}" + (f", MCP servers: {list(self.mcp.servers.keys())}" if self.mcp.servers else ""))
+        self._startup_health_check()
+        logging.info(f"Agent initialized with model: {model}" + (f", MCP servers: {list(self.mcp.servers.keys())}" if self.mcp.servers else "") + f" mode={self._mode}")
+
+    def _startup_health_check(self):
+        check = health_mod.checkup()
+        if self._mode == "readonly":
+            logging.warning("Agent in READONLY mode — tools and memory updates disabled")
+        if not health_mod.disk_ok():
+            logging.warning("Low disk space, rotating old backups")
+            self._rotate_backups_if_needed()
+        health_mod.backup_state()
+
+    def _rotate_backups_if_needed(self):
+        import shutil
+        bdir = self.agent_root / "backups"
+        if bdir.exists():
+            backups = sorted(bdir.iterdir())
+            while len(backups) > 5:
+                shutil.rmtree(backups.pop(0))
 
     def _mcp_context(self) -> str:
         if not self.mcp.servers:
@@ -117,29 +137,36 @@ class AgentLoop:
         return base
 
     def step(self, user_message: str) -> str:
+        self._mode = health_mod.current_mode()
+
         queue_data = queue_manager.read()
         if queue_data.get("text"):
             user_message = f"[QUEUE]: {queue_data['text']}\n\n(User also says: {user_message})"
 
+        if self._mode == "readonly":
+            return "Извини, я в аварийном режиме. Состояние повреждено, инструменты отключены. Попробуй позже."
+
         context = self._build_context(user_message)
+        mode_note = f"\n[Mode: {self._mode}]" if self._mode != "normal" else ""
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "system", "content": f"CURRENT CONTEXT:\n{context}\nMood: {self.mood.get('mood', 'neutral')}, energy: {self.mood.get('energy', 50)}"},
+            {"role": "system", "content": f"CURRENT CONTEXT:\n{context}{mode_note}\nMood: {self.mood.get('mood', 'neutral')}, energy: {self.mood.get('energy', 50)}"},
             {"role": "user", "content": user_message},
         ]
 
         messages = trim_context(messages)
         result = self._chat_with_tools(messages)
 
-        for mu in result.get("memory_updates", []):
-            if mu.get("type") == "fact":
-                memory_manager.append_memory(mu["content"])
-            elif mu.get("type") == "lesson":
-                memory_manager.append_lesson(mu["content"])
+        if self._mode != "readonly":
+            for mu in result.get("memory_updates", []):
+                if mu.get("type") == "fact":
+                    memory_manager.append_memory(mu["content"])
+                elif mu.get("type") == "lesson":
+                    memory_manager.append_lesson(mu["content"])
 
-        mood_upd = result.get("mood_update")
-        if mood_upd:
-            mood_manager.update(mood_upd)
+            mood_upd = result.get("mood_update")
+            if mood_upd:
+                mood_manager.update(mood_upd)
 
         if queue_data.get("text"):
             queue_manager.clear()
@@ -149,30 +176,55 @@ class AgentLoop:
         event_logger.append("interaction", {"user": user_message, "assistant": reply})
         analytics.record_interaction(user_message, reply, self.mood)
 
-        memory_manager.append_to_session_buffer({
-            "role": "user", "content": user_message, "type": "interaction"
-        })
-        transferred = self.memory_policy.consolidate()
-        if transferred:
-            logging.info(f"Consolidated {transferred} items to long-term memory")
+        if self._mode != "readonly":
+            memory_manager.append_to_session_buffer({
+                "role": "user", "content": user_message, "type": "interaction"
+            })
+            transferred = self.memory_policy.consolidate()
+            if transferred:
+                logging.info(f"Consolidated {transferred} items to long-term memory")
 
-        insight = ref.reflect(user_message, reply, self.ollama)
-        if insight:
-            logging.info(f"Insight: {insight}")
+            insight = ref.reflect(user_message, reply, self.ollama)
+            if insight:
+                logging.info(f"Insight: {insight}")
 
         self.mood = mood_manager.load()
         return reply
+
+    def _maybe_recover(self) -> bool:
+        corrupted = health_mod.verify_state()
+        if not corrupted:
+            return True
+        repaired = health_mod.repair_state()
+        if repaired:
+            health_mod.change_mode("safe")
+            self._mode = "safe"
+            logging.info(f"Repaired {repaired}, entering safe mode")
+            return True
+        health_mod.change_mode("readonly")
+        self._mode = "readonly"
+        logging.error("Could not repair state, entering readonly mode")
+        return False
 
     def close(self):
         self.mcp.stop_all()
 
     def _chat_with_tools(self, messages: list) -> dict:
         max_iter = 5
+        max_retries = 3
         session_allowlist = []
 
         for iteration in range(max_iter):
-            raw = self.ollama.chat(messages, response_format="json")
-            result = self._parse_json_response(raw)
+            raw = None
+            result = None
+            for attempt in range(max_retries):
+                raw = self.ollama.chat(messages, response_format="json")
+                result = self._parse_json_response(raw)
+                if "reply" in result or "tool_calls" in result or "request_permission" in result:
+                    break
+                logging.warning(f"Parse attempt {attempt + 1} failed, retrying...")
+            if result is None:
+                return {"reply": "Извини, не смогла обработать ответ. Попробуй переформулировать."}
 
             perm = result.get("request_permission")
             if perm:
