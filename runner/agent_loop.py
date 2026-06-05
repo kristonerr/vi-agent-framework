@@ -14,11 +14,20 @@ from . import health as health_mod
 
 MCP_TOOL_PREFIX = "mcp_"
 
-MAX_CONTEXT_TOKENS = 4096
+def _load_max_context_tokens() -> int:
+    cfg_path = Path(__file__).parent.parent / "config.json"
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        return int(cfg.get("max_context_tokens", 4096))
+    except Exception:
+        return 4096
 
 
 def estimate_tokens(text: str) -> int:
     return len(text.encode("utf-8")) // 4
+
+
+MAX_CONTEXT_TOKENS = _load_max_context_tokens()
 
 
 def trim_context(messages: list[dict], max_tokens: int = MAX_CONTEXT_TOKENS) -> list[dict]:
@@ -249,12 +258,11 @@ class AgentLoop:
                 print(f"\n🔐 Вика хочет выполнить команду:\n   {cmd}\n   Причина: {reason}")
                 answer = input("   Разрешить? (y/n): ").strip().lower()
                 if answer in ("y", "yes"):
-                    session_allowlist.append(cmd.split()[0])
+                    tool_registry._session_allowlist.add(cmd)
                     messages.append({
                         "role": "user",
                         "content": f"Permission granted for: {cmd}",
                     })
-                    tool_registry._session_allowlist = session_allowlist
                     import shlex
                     cmd_list = shlex.split(cmd)
                     try:

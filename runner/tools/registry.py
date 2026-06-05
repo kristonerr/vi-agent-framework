@@ -4,7 +4,28 @@ from pathlib import Path
 ALLOWLIST_PATH = "tools/allowlist.txt"
 
 _tools: dict[str, callable] = {}
-_session_allowlist: list[str] = []
+
+
+class _SessionAllowlist:
+    def __init__(self):
+        self._items: list[str] = []
+
+    def get(self) -> list[str]:
+        return list(self._items)
+
+    def add(self, cmd: str):
+        base = cmd.strip().split()[0] if cmd.strip() else ""
+        if base and base not in self._items:
+            self._items.append(base)
+
+    def set(self, lst: list[str]):
+        self._items = list(lst)
+
+    def clear(self):
+        self._items.clear()
+
+
+_session_allowlist = _SessionAllowlist()
 
 
 def register(name: str, fn: callable) -> None:
@@ -28,8 +49,8 @@ def load_allowlist() -> list[str]:
 
 
 def is_command_allowed(command: str) -> bool:
-    allowlist = load_allowlist() + _session_allowlist
+    allowlist = load_allowlist() + _session_allowlist.get()
     if not allowlist:
         return False
     cmd_base = command.strip().split()[0] if command.strip() else ""
-    return any(cmd_base == allowed or command.strip().startswith(allowed) for allowed in allowlist)
+    return any(cmd_base == allowed for allowed in allowlist)

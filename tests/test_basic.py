@@ -1,6 +1,8 @@
 """Basic tests for vi-agent runner modules."""
 import sys
 import os
+import json
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent.resolve()
@@ -67,19 +69,19 @@ def test_trim_context():
     assert len(trimmed) < len(msgs)
 
 
-def test_file_manager():
+def test_file_manager(tmp_path):
     from runner.file_manager import read, write, list_files
     test_content = "test data"
-    test_path = "test_tmp.txt"
+    test_path = str(tmp_path / "test_tmp.txt")
     write(test_path, test_content)
     assert read(test_path) == test_content
-    files = list_files(".", "*.txt")
+    files = list_files(str(tmp_path), "*.txt")
     assert any("test_tmp" in f for f in files)
-    os.unlink(test_path)
 
 
-def test_memory_manager():
+def test_memory_manager(tmp_path, monkeypatch):
     from runner import memory_manager as mm
+    monkeypatch.setattr(mm, "MEMORY_PATH", str(tmp_path / "memory.md"))
     test_fact = "test fact"
     mm.append_memory(test_fact)
     memory = mm.read_memory()
@@ -124,6 +126,7 @@ def test_import_standalone():
         "runner.tools.list_files",
         "runner.tools.run_command",
         "runner.tools.web_search",
+        "runner.tools._safe",
         "runner.mcp_client",
         "runner.health",
         "runner.watchdog",

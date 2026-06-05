@@ -2,6 +2,7 @@
   "model": "qwen2.5:7b",
   "base_url": "http://localhost:11434",
   "temperature": 0.7,
+  "max_context_tokens": 4096,
   "tools_enabled": true,
   "allowlist_path": "tools/allowlist.txt",
   "mcp_servers": []
