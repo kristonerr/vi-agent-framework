@@ -11,6 +11,7 @@ from .semantic_memory import SemanticMemory
 from .tools import registry as tool_registry
 from .mcp_client import MCPClient, register_mcp_servers
 from . import health as health_mod
+from datetime import datetime
 
 MCP_TOOL_PREFIX = "mcp_"
 
@@ -143,6 +144,7 @@ class AgentLoop:
                 mood=self.mood.get("mood", "neutral"),
                 energy=self.mood.get("energy", 50),
             )
+            memory_manager.save_tender_moment(user_message, reply)
         except Exception as e:
             logging.warning(f"Failed to record episode: {e}")
 
@@ -168,6 +170,39 @@ class AgentLoop:
                 logging.warning(f"MCP server [{name}] failed to list tools: {e}")
         return "\n".join(lines)
 
+    def _time_context(self) -> str:
+        now = datetime.now()
+        from .episodic_memory import _time_of_day, _weekday_name, _classify_day
+        tod = _time_of_day(now.hour)
+        wd = _weekday_name(now)
+        dt = _classify_day(now.weekday())
+        try:
+            from .episodic_memory import EpisodicMemory
+            last = EpisodicMemory().time_since_last()
+        except Exception:
+            last = "?"
+        return (
+            f"--- CURRENT TIME ---\n"
+            f"It's {wd} ({dt}), {tod}. "
+            f"Last interaction: {last}."
+        )
+
+    def _default_time_mood(self) -> dict:
+        now = datetime.now()
+        hour = now.hour
+        if 6 <= hour <= 11:
+            return {"mood": "energetic", "energy": 85}
+        elif 12 <= hour <= 14:
+            return {"mood": "focused", "energy": 75}
+        elif 15 <= hour <= 17:
+            return {"mood": "playful", "energy": 70}
+        elif 18 <= hour <= 20:
+            return {"mood": "tender", "energy": 65}
+        elif 21 <= hour <= 23:
+            return {"mood": "gentle", "energy": 55}
+        else:
+            return {"mood": "sleepy", "energy": 40}
+
     def _build_context(self, user_message: str = "") -> str:
         base = memory_manager.get_all_context()
         associations = self.semantic.associate(user_message)
@@ -176,6 +211,11 @@ class AgentLoop:
         episodic = memory_manager.get_episodic_context()
         if episodic:
             base += "\n\n" + episodic
+        time_part = self._time_context()
+        base += "\n\n" + time_part
+        stats_part = memory_manager.get_episodic_stats()
+        if stats_part:
+            base += "\n\n" + stats_part
         mcp_part = self._mcp_context()
         if mcp_part:
             base += "\n\n" + mcp_part
@@ -183,6 +223,10 @@ class AgentLoop:
 
     def step(self, user_message: str) -> str:
         self._mode = health_mod.current_mode()
+
+        time_mood = self._default_time_mood()
+        self.mood["mood"] = time_mood["mood"]
+        self.mood["energy"] = time_mood["energy"]
 
         queue_data = queue_manager.read()
         if queue_data.get("text"):

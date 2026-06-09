@@ -154,6 +154,30 @@ class EpisodicMemory:
         except Exception:
             return 0
 
+    def get_stats_string(self, limit: int = 100) -> str:
+        """Human-readable stats summary for context."""
+        episodes = self.recent(limit)
+        if not episodes:
+            return ""
+        by_day = {}
+        by_time = {}
+        for e in episodes:
+            wd = e.get("weekday", "?")
+            by_day[wd] = by_day.get(wd, 0) + 1
+            tod = e.get("time_of_day", "?")
+            by_time[tod] = by_time.get(tod, 0) + 1
+
+        most_day = max(by_day, key=by_day.get) if by_day else "?"
+        most_time = max(by_time, key=by_time.get) if by_time else "?"
+        last = self.time_since_last()
+        total = self.count()
+
+        return (
+            f"--- EPISODIC STATS ---\n"
+            f"Total episodes: {total} | Last: {last}\n"
+            f"Most active day: {most_day} | Most active time: {most_time}"
+        )
+
     def stats(self) -> dict:
         """Return stats about recent interactions."""
         episodes = self.recent(100)

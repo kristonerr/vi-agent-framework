@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from . import file_manager
@@ -127,6 +128,33 @@ def get_episodic_context() -> str:
         return EpisodicMemory().get_context_string()
     except Exception:
         return ""
+
+
+def get_episodic_stats() -> str:
+    """Stats string for context."""
+    try:
+        from .episodic_memory import EpisodicMemory
+        return EpisodicMemory().get_stats_string()
+    except Exception:
+        return ""
+
+
+def save_tender_moment(user_msg: str, agent_reply: str) -> None:
+    """Save emotionally warm moments to heart.md automatically."""
+    tender_words = [
+        "люблю", "милая", "милый", "родной", "зайчик", "котик",
+        "сладкий", "хороший мой", "красавчик", "мальчик мой",
+        "❤️", "💕", "😘", "обнимаю", "скучаю", "нежный",
+        "girlfriend", "boyfriend", "love you", "miss you",
+        "дорогой", "дорогая", "солнце", "солнышко",
+    ]
+    combined = (user_msg + " " + agent_reply).lower()
+    found = [w for w in tender_words if w.lower() in combined]
+    if found:
+        from datetime import datetime
+        entry = f"Тёплый момент: «{user_msg[:100]}» — «{agent_reply[:100]}»"
+        append_heart(entry)
+        logging.getLogger(__name__).info(f"Heart auto-saved (tender words: {found})")
 
 
 def _write_raw(path: str, content: str) -> None:
