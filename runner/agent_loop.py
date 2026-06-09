@@ -316,27 +316,12 @@ class AgentLoop:
             tool_calls = sort_tool_calls(tool_calls)
 
             for tc in tool_calls:
-                fn = tool_registry.get(tc.get("name", ""))
-                if fn:
-                    try:
-                        tool_result = fn(tc.get("arguments", {}))
-                        messages.append({
-                            "role": "tool",
-                            "content": json.dumps(tool_result, ensure_ascii=False),
-                            "name": tc["name"],
-                        })
-                    except Exception as e:
-                        messages.append({
-                            "role": "tool",
-                            "content": json.dumps({"error": str(e)}, ensure_ascii=False),
-                            "name": tc["name"],
-                        })
-                else:
-                    messages.append({
-                        "role": "tool",
-                        "content": json.dumps({"error": f"unknown tool: {tc.get('name')}"}),
-                        "name": tc.get("name", "?"),
-                    })
+                tool_result = tool_registry.call_with_resilience(tc.get("name", ""), tc.get("arguments", {}))
+                messages.append({
+                    "role": "tool",
+                    "content": json.dumps(tool_result, ensure_ascii=False),
+                    "name": tc.get("name", "?"),
+                })
 
             messages = trim_context(messages)
 

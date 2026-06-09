@@ -133,3 +133,94 @@ def test_import_standalone():
     ]
     for mod_name in modules:
         __import__(mod_name)
+
+
+class TestCircuitBreaker:
+    def test_closed_initial_state(self):
+        from runner.circuit_breaker import CircuitBreaker
+        cb = CircuitBreaker(name="test", failure_threshold=2, recovery_timeout=300)
+        assert cb.state == "closed"
+        assert cb.failure_count == 0
+
+    def test_opens_after_threshold(self):
+        from runner.circuit_breaker import CircuitBreaker
+
+        def failing_fn(args=None):
+            raise RuntimeError("fail")
+
+        cb = CircuitBreaker(name="test", failure_threshold=2, recovery_timeout=300)
+
+        r1 = cb.call(failing_fn)
+        assert r1["_circuit_breaker"] is True
+        assert cb.state == "closed"
+        assert cb.failure_count == 1
+
+        r2 = cb.call(failing_fn)
+        assert r2["_circuit_breaker"] is True
+        assert cb.state == "open"
+
+    def test_blocks_when_open(self):
+        from runner.circuit_breaker import CircuitBreaker
+
+        def failing_fn(args=None):
+            raise RuntimeError("fail")
+
+        cb = CircuitBreaker(name="test", failure_threshold=1, recovery_timeout=300)
+        cb.call(failing_fn)
+        assert cb.state == "open"
+
+        r = cb.call(failing_fn)
+        assert r["_circuit_breaker"] is True
+        assert "временно недоступен" in r.get("error", "")
+
+    def test_recovers_after_timeout(self):
+        from runner.circuit_breaker import CircuitBreaker
+        import time
+
+        calls = []
+
+        def alternating_fn(args=None):
+            calls.append(1)
+            if len(calls) < 3:
+                raise RuntimeError("fail")
+            return {"success": True, "data": "ok"}
+
+        cb = CircuitBreaker(name="test", failure_threshold=2, recovery_timeout=0.05)
+        cb.call(alternating_fn)
+        cb.call(alternating_fn)
+        assert cb.state == "open"
+
+        time.sleep(0.1)
+        r = cb.call(alternating_fn)
+        assert r.get("data") == "ok"
+        assert cb.state == "closed"
+
+    def test_reset(self):
+        from runner.circuit_breaker import CircuitBreaker
+
+        def failing_fn(args=None):
+            raise RuntimeError("fail")
+
+        cb = CircuitBreaker(name="test", failure_threshold=1, recovery_timeout=300)
+        cb.call(failing_fn)
+        assert cb.state == "open"
+        cb.reset()
+        assert cb.state == "closed"
+        assert cb.failure_count == 0
+        assert cb.last_error == ""
+
+    def test_non_fragile_tool_passes_through(self):
+        from runner.tools.registry import call_with_resilience, register
+
+        def ok_tool(args=None):
+            return {"success": True, "data": "hello"}
+
+        register("list_files", ok_tool)
+        r = call_with_resilience("list_files", {})
+        assert r["success"] is True
+        assert r["data"] == "hello"
+
+    def test_unknown_tool_returns_error(self):
+        from runner.tools.registry import call_with_resilience
+        r = call_with_resilience("nonexistent_tool", {})
+        assert "unknown tool" in r.get("error", "")
