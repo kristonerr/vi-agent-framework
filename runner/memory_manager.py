@@ -120,6 +120,15 @@ def clear_session_buffer() -> None:
     file_manager.write(SESSION_BUFFER_PATH, "[]")
 
 
+def get_episodic_context() -> str:
+    """Build timeline string from episodic memory."""
+    try:
+        from .episodic_memory import EpisodicMemory
+        return EpisodicMemory().get_context_string()
+    except Exception:
+        return ""
+
+
 def _write_raw(path: str, content: str) -> None:
     """Прямая запись в файл (для memory_policy)."""
     file_manager.write(path, content)

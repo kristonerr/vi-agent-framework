@@ -134,6 +134,18 @@ class AgentLoop:
             self._rotate_backups_if_needed()
         health_mod.backup_state()
 
+    def _record_episode(self, user_message: str, reply: str):
+        try:
+            from .episodic_memory import EpisodicMemory
+            EpisodicMemory().record(
+                user_message=user_message,
+                agent_response=reply,
+                mood=self.mood.get("mood", "neutral"),
+                energy=self.mood.get("energy", 50),
+            )
+        except Exception as e:
+            logging.warning(f"Failed to record episode: {e}")
+
     def _rotate_backups_if_needed(self):
         import shutil
         bdir = self.agent_root / "backups"
@@ -161,6 +173,9 @@ class AgentLoop:
         associations = self.semantic.associate(user_message)
         if associations:
             base += "\n\n" + associations
+        episodic = memory_manager.get_episodic_context()
+        if episodic:
+            base += "\n\n" + episodic
         mcp_part = self._mcp_context()
         if mcp_part:
             base += "\n\n" + mcp_part
@@ -235,6 +250,8 @@ class AgentLoop:
             transferred = self.memory_policy.consolidate()
             if transferred:
                 logging.info(f"Consolidated {transferred} items to long-term memory")
+
+        self._record_episode(user_message, reply)
 
         self.mood = mood_manager.load()
         return reply
