@@ -199,6 +199,11 @@ class AgentLoop:
                 memory_updates.append(insight)
                 logging.info(f"Reflection: {insight['type']}: {insight['content']}")
 
+            review = ref.self_review(user_message, result.get("reply", ""), self.ollama)
+            if review:
+                memory_updates.append(review)
+                logging.info(f"Self-review: {review['content']}")
+
             for mu in memory_updates:
                 if mu.get("type") == "fact":
                     memory_manager.append_memory(mu["content"], importance=mu.get("importance", 5))
