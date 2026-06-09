@@ -14,6 +14,7 @@ MAX_BACKUPS = 20
 STATE_FILES = [
     "memory.md", "lessons.md", "heart.md", "intuition.md",
     "summary.md", "mood.json", "config.json", "session_buffer.json",
+    "learnings.md",
 ]
 
 BACKUP_INTERVAL = 300

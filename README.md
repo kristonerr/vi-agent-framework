@@ -33,6 +33,8 @@ Ollama ←→ runner/main.py ←→ File System
                               ├── analytics.json (mood history & stats)
                               ├── events.jsonl (interaction log)
                               ├── config.json (runtime config)
+                              ├── learnings.md (web-learned knowledge)
+                              ├── activity_log.jsonl (window titles only)
                               ├── schemas/ (JSON validation)
                               ├── tools/ (runner tool layer)
 ├── runner/ (core logic)
@@ -43,8 +45,15 @@ Ollama ←→ runner/main.py ←→ File System
 │   ├── proactivity.py
 │   ├── memory_policy.py
 │   ├── semantic_memory.py
-│   └── mcp_client.py
+│   ├── mcp_client.py
+│   ├── health.py
+│   ├── watchdog.py
+│   └── ...
+├── observer/ (safe context monitoring)
+│   ├── watcher.py (active window title only)
+│   └── learner.py (web search + knowledge)
                               ├── viagent_proactivity.py (daemon entry point)
+                              ├── viagent_observer.py (watch + learn daemon)
                               └── scripts/ (backup, health)
 ```
 
@@ -71,6 +80,8 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 | `summary.md` | Session context for recovery |
 | `heart.md` | Emotional memory — feelings, warmth, pain 💕 |
 | `intuition.md` | Behavioral patterns and user insights 🧠 |
+| `learnings.md` | Knowledge acquired via web search — grows over time 📚 |
+| `activity_log.jsonl` | Window title history (safe, no content) |
 | `events.jsonl` | Raw interaction history (machine-readable) |
 | `config.json` | Runtime config (model, temperature, etc.) |
 | `schemas/` | JSON Schema definitions for validation |
@@ -117,9 +128,22 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [ ] Conversation history persistence
 - [ ] Telegram/Matrix integration
 
+## Observer (optional)
+
+The `/observer` module adds safe context monitoring and self-learning:
+
+- **`watcher.py`** — polls the active window title every N seconds (configurable). **No keystrokes, no screenshots, no content.** Only the window title is logged (e.g. `"Google Chrome"`, `"opencode.exe"`).
+- **`learner.py`** — periodically reads recent window titles, extracts topics, runs DuckDuckGo search (anonymous, no API key), and saves interesting findings to `learnings.md`.
+- **`viagent_observer.py`** — daemon entry point. Start with `--watch` to monitor windows, `--learn` for one-shot learning, or both.
+
+> The observer is **opt-in**. It does not run unless you explicitly start it.
+
 ## Privacy
 
-Everything runs **locally**. No data leaves your computer. No cloud APIs. No tracking. `events.jsonl` and `analytics.json` are in `.gitignore` — they never get committed.
+Everything runs **locally**. No data leaves your computer. No cloud APIs. No tracking.  
+Web search goes through DuckDuckGo (anonymous, no accounts).  
+`events.jsonl`, `analytics.json`, and `activity_log.jsonl` are in `.gitignore` — they never get committed.  
+Window titles alone cannot reconstruct your activity — they are context hints, not surveillance.
 
 ## License
 

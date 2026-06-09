@@ -6,7 +6,8 @@
     "intuition.md": "2f3625b60e0ce477516c5c32d6b8901f6ca9943fe087f23be53b82f6edc2aacc",
     "summary.md": "93359833d852c924a791c5e60f7efd05680994e3ba01038961907a054142f95d",
     "mood.json": "5fa90f0320a82edf6bfb8684898831042f8076bb6ca2018ee85b5010973c4051",
-    "config.json": "0593b180adf2aa2f2a13d24b542d5ec1d039cf5993fabec6869151ef43afb3a7"
+    "config.json": "0593b180adf2aa2f2a13d24b542d5ec1d039cf5993fabec6869151ef43afb3a7",
+    "learnings.md": "b219b7c6551abbed2def2c4526f87a8ed24e8eebf7020fe0fad35b8c208534b5"
   },
   "backups": [
     "20260605_104531",
@@ -14,7 +15,10 @@
     "20260605_111102",
     "20260605_111114",
     "20260609_141741",
-    "20260609_141939"
+    "20260609_141939",
+    "20260609_145223",
+    "20260609_145307",
+    "20260609_145337"
   ],
   "last_checkup": "",
   "mode": "normal"

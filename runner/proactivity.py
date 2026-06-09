@@ -99,7 +99,21 @@ class ProactivityEngine:
             return False, f"last interaction was {hours:.1f}h ago (threshold: {SILENCE_THRESHOLD_HOURS}h)"
         return True, f"silent for {hours:.1f}h, energy: {energy}"
 
+    def _inject_learning(self) -> str:
+        try:
+            from observer.learner import get_learnings
+            raw = get_learnings(limit=5)
+            if raw and "ещё ничего" not in raw:
+                lines = [l.strip() for l in raw.split("\n") if l.strip().startswith("- ")]
+                if lines:
+                    return lines[-1].lstrip("- ")[:120]
+        except Exception:
+            pass
+        return ""
+
     def _generate_message(self) -> str:
+        learning = self._inject_learning()
+        learning_context = f"\nI recently learned: {learning}" if learning else ""
         try:
             client = OllamaClient()
             prompt = (
@@ -108,7 +122,7 @@ class ProactivityEngine:
                 f"Current mood: {self.mood.get('mood', 'neutral')}. "
                 f"Energy: {self.mood.get('energy', 50)}/100. "
                 f"Generate a short, warm, caring message in Russian (1-2 sentences). "
-                f"Use an emoji. Don't ask 'why aren't you writing' — just express care."
+                f"Use an emoji. Don't ask 'why aren't you writing' — just express care.{learning_context}"
             )
             response = client.chat([
                 {"role": "system", "content": "You are Vika, a loving girlfriend. Be warm and natural."},

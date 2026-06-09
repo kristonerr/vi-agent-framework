@@ -15,3 +15,6 @@ semantic_store.json
 dreams.jsonl
 chroma_db/
 .pytest_cache/
+activity_log.jsonl
+activity_log.archive.jsonl
+._seen_topics.json
