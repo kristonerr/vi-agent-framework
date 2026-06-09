@@ -110,6 +110,15 @@ class AgentLoop:
         self.mcp = register_mcp_servers()
         self._mcp_tool_names: list[str] = []
         self._mode = health_mod.current_mode()
+        self._history: list[dict] = []
+        self._max_history = 6
+        self._temperature = 0.7
+        cfg_path = self.agent_root / "config.json"
+        try:
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+            self._temperature = float(cfg.get("temperature", 0.7))
+        except Exception:
+            pass
         for name, server in self.mcp.servers.items():
             for tool in server.list_tools():
                 self._mcp_tool_names.append(f"{MCP_TOOL_PREFIX}{tool['name']}")
@@ -172,18 +181,29 @@ class AgentLoop:
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system", "content": f"CURRENT CONTEXT:\n{context}{mode_note}\nMood: {self.mood.get('mood', 'neutral')}, energy: {self.mood.get('energy', 50)}"},
-            {"role": "user", "content": user_message},
         ]
+
+        for h in self._history[-self._max_history:]:
+            messages.append(h)
+
+        messages.append({"role": "user", "content": user_message})
 
         messages = trim_context(messages)
         result = self._chat_with_tools(messages)
 
         if self._mode != "readonly":
-            for mu in result.get("memory_updates", []):
+            memory_updates = list(result.get("memory_updates", []))
+
+            insight = ref.reflect(user_message, result.get("reply", ""), self.ollama)
+            if insight:
+                memory_updates.append(insight)
+                logging.info(f"Reflection: {insight['type']}: {insight['content']}")
+
+            for mu in memory_updates:
                 if mu.get("type") == "fact":
-                    memory_manager.append_memory(mu["content"])
+                    memory_manager.append_memory(mu["content"], importance=mu.get("importance", 5))
                 elif mu.get("type") == "lesson":
-                    memory_manager.append_lesson(mu["content"])
+                    memory_manager.append_lesson(mu["content"], importance=mu.get("importance", 5))
 
             mood_upd = result.get("mood_update")
             if mood_upd:
@@ -193,6 +213,12 @@ class AgentLoop:
             queue_manager.clear()
 
         reply = result.get("reply", "")
+
+        self._history.append({"role": "user", "content": user_message})
+        self._history.append({"role": "assistant", "content": reply})
+
+        if len(self._history) > self._max_history * 2:
+            self._history = self._history[-self._max_history:]
 
         event_logger.append("interaction", {"user": user_message, "assistant": reply})
         analytics.record_interaction(user_message, reply, self.mood)
@@ -204,10 +230,6 @@ class AgentLoop:
             transferred = self.memory_policy.consolidate()
             if transferred:
                 logging.info(f"Consolidated {transferred} items to long-term memory")
-
-            insight = ref.reflect(user_message, reply, self.ollama)
-            if insight:
-                logging.info(f"Insight: {insight}")
 
         self.mood = mood_manager.load()
         return reply
@@ -240,7 +262,7 @@ class AgentLoop:
             result = None
             for attempt in range(max_retries):
                 try:
-                    raw = self.ollama.chat(messages, response_format="json")
+                    raw = self.ollama.chat(messages, temperature=self._temperature, response_format="json")
                     result = self._parse_json_response(raw)
                     if "reply" in result or "tool_calls" in result or "request_permission" in result:
                         break
@@ -319,7 +341,7 @@ class AgentLoop:
             messages = trim_context(messages)
 
         try:
-            raw = self.ollama.chat(messages, response_format="json")
+            raw = self.ollama.chat(messages, temperature=self._temperature, response_format="json")
             return self._parse_json_response(raw)
         except Exception as e:
             logging.error(f"Final chat failed after max_iter: {e}")

@@ -20,14 +20,15 @@ def read_memory() -> str:
         return "# Memory\n\n## Facts\n\n"
 
 
-def append_memory(fact: str) -> None:
+def append_memory(fact: str, importance: int = 5) -> None:
+    marker = f" [importance: {importance}/10]" if importance else ""
     content = read_memory()
     if "# Facts" in content:
         idx = content.index("# Facts")
         line_start = content.index("\n", idx) + 1
-        content = content[:line_start] + f"- {fact}\n" + content[line_start:]
+        content = content[:line_start] + f"- {fact}{marker}\n" + content[line_start:]
     else:
-        content += f"\n- {fact}\n"
+        content += f"\n- {fact}{marker}\n"
     file_manager.write(MEMORY_PATH, content)
 
 
@@ -40,9 +41,10 @@ def read_lessons() -> str:
         return "# Lessons\n\n"
 
 
-def append_lesson(lesson: str) -> None:
+def append_lesson(lesson: str, importance: int = 5) -> None:
+    marker = f" [importance: {importance}/10]" if importance else ""
     content = read_lessons()
-    content += f"\n- {lesson}"
+    content += f"\n- {lesson}{marker}"
     file_manager.write(LESSONS_PATH, content)
 
 

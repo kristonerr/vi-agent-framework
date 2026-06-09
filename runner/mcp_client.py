@@ -1,8 +1,9 @@
 import json
 import logging
-import select
+import queue
 import subprocess
 import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -31,6 +32,29 @@ class MCPServer:
         self._process: subprocess.Popen | None = None
         self._tools: list[dict] = []
         self._lock = threading.Lock()
+        self._responses: queue.Queue = queue.Queue()
+        self._reader_thread: threading.Thread | None = None
+        self._running = False
+
+    def _reader_loop(self):
+        while self._running and self._process and self._process.stdout:
+            try:
+                line = self._process.stdout.readline()
+                if not line:
+                    break
+                resp = json.loads(line.strip())
+                self._responses.put(resp)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            except Exception as e:
+                if self._running:
+                    logging.warning(f"MCP reader [{self.name}]: {e}")
+                break
+
+    def _start_reader(self):
+        self._running = True
+        self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
+        self._reader_thread.start()
 
     def start(self) -> bool:
         try:
@@ -42,6 +66,7 @@ class MCPServer:
                 text=True,
                 env=self.env,
             )
+            self._start_reader()
             resp = self._rpc_call("initialize", {"protocolVersion": "2024-11-05"})
             if resp and resp.get("result"):
                 tool_resp = self._rpc_call("tools/list", {})
@@ -72,24 +97,29 @@ class MCPServer:
             try:
                 self._process.stdin.write(json.dumps(req) + "\n")
                 self._process.stdin.flush()
-                line = ""
-                if self._process.stdout:
-                    r, _, _ = select.select([self._process.stdout], [], [], 10.0)
-                    if r:
-                        line = self._process.stdout.readline()
-                if line:
-                    return json.loads(line.strip())
             except Exception as e:
-                logging.warning(f"MCP RPC error [{self.name}]: {e}")
+                logging.warning(f"MCP write error [{self.name}]: {e}")
+                return None
+
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            try:
+                resp = self._responses.get(timeout=0.5)
+                if resp.get("id") == req["id"]:
+                    return resp
+            except queue.Empty:
+                continue
+        logging.warning(f"MCP timeout [{self.name}] for {method}")
         return None
 
     def _cleanup(self):
+        self._running = False
         if self._process:
             try:
                 self._process.terminate()
             except Exception:
                 pass
-        self._process = None
+            self._process = None
         self._tools = []
 
     def stop(self):

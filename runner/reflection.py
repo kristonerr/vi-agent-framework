@@ -1,10 +1,14 @@
 from datetime import datetime
-from . import memory_manager, event_logger
+from . import event_logger
 from .ollama_client import OllamaClient
 
 
-def reflect(user_message: str, agent_response: str, ollama: OllamaClient) -> str | None:
-    """After each interaction, the agent may write an insight to lessons.md."""
+def reflect(user_message: str, agent_response: str, ollama: OllamaClient) -> dict | None:
+    """After each interaction, returns an insight dict or None.
+    
+    Returns:
+        {"type": "fact" | "lesson", "content": "..."} or None
+    """
     prompt = f"""You are a self-improving agent. Based on this interaction, write ONE short insight (1-2 sentences) if anything worth learning emerged.
 
 User: {user_message}
@@ -29,14 +33,10 @@ TEXT: ..."""
             elif l.startswith("TEXT:"):
                 insight_text = l.replace("TEXT:", "").strip()
 
-        if insight_type == "memory" and insight_text:
-            memory_manager.append_memory(insight_text)
-            event_logger.append("reflection", {"type": "memory", "text": insight_text})
-            return f"📝 {insight_text}"
-        elif insight_type == "lesson" and insight_text:
-            memory_manager.append_lesson(insight_text)
-            event_logger.append("reflection", {"type": "lesson", "text": insight_text})
-            return f"📖 {insight_text}"
+        if insight_type in ("memory", "lesson") and insight_text:
+            mapped = {"memory": "fact", "lesson": "lesson"}
+            event_logger.append("reflection", {"type": insight_type, "text": insight_text})
+            return {"type": mapped[insight_type], "content": insight_text}
     except Exception:
         pass
 

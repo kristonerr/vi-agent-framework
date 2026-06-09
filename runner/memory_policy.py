@@ -82,13 +82,13 @@ class MemoryPolicy:
 
             if importance >= 5 or force:
                 if entry_type == "emotional":
-                    mm.append_heart(f"{text} [importance: {importance}/10]")
+                    mm.append_heart(f"{text}")
                 elif entry_type == "pattern":
                     mm.append_intuition(text)
                 elif entry_type == "lesson":
-                    mm.append_lesson(text)
+                    mm.append_lesson(text, importance=importance)
                 else:
-                    mm.append_memory(f"{text} [importance: {importance}/10]")
+                    mm.append_memory(text, importance=importance)
 
                 self.semantic.add(text, source=entry_type, importance=importance)
                 transferred += 1
