@@ -110,6 +110,8 @@ You can also use this folder with **OpenCode**, **Continue**, or any AI client t
 - [x] Python runner with Ollama integration
 - [x] Tool layer with allowlist
 - [x] Reflection — agent writes insights after each conversation
+- [x] Self-review — agent evaluates own response quality after every interaction
+- [x] Circuit breaker — tools auto-disable after repeated failures, agent keeps running
 - [x] Analytics — mood tracking and user pattern recognition
 - [x] Structured JSON response (tool_calls, memory_updates, mood_update)
 - [x] Context injection (memory, lessons, summary in prompt)
